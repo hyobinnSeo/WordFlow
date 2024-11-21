@@ -7,21 +7,57 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <div class="button-container">
-            <button id="startButton" class="control-button">Start Recording</button>
-            <button id="stopButton" class="control-button" disabled>Stop Recording</button>
-            <button id="autoScrollButton" class="control-button">Auto-scroll: ON</button>
+    <header class="header">
+        <div class="header-content">
+            <h1 class="header-title">Voice Flow</h1>
+            <p class="text-sm text-gray-500">Speech to Text Converter</p>
         </div>
-        <div class="text-areas-container">
-            <div class="text-container">
-                <textarea id="transcription" readonly placeholder="Your speech will appear here..."></textarea>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="card">
+                <div class="button-container">
+                    <button id="startButton" class="control-button">
+                        ⏺ Start Recording
+                    </button>
+                    <button id="stopButton" class="control-button" disabled>
+                        ⏹ Stop Recording
+                    </button>
+                    <button id="autoScrollButton" class="control-button">
+                        ⟳ Auto-scroll: ON
+                    </button>
+                </div>
             </div>
-            <div class="text-container">
-                <textarea id="secondary-text" placeholder="Additional text area..."></textarea>
+
+            <div class="text-areas-container">
+                <div class="text-container">
+                    <label for="transcription" class="text-sm font-medium text-gray-700">
+                        Speech Transcription
+                    </label>
+                    <textarea 
+                        id="transcription" 
+                        readonly 
+                        placeholder="Your speech will appear here..."
+                        aria-label="Speech transcription output"
+                    ></textarea>
+                    <p class="text-sm text-gray-500">Real-time transcription will appear here</p>
+                </div>
+
+                <div class="text-container">
+                    <label for="secondary-text" class="text-sm font-medium text-gray-700">
+                        Notes
+                    </label>
+                    <textarea 
+                        id="secondary-text" 
+                        placeholder="Add your notes here..."
+                        aria-label="Additional notes area"
+                    ></textarea>
+                    <p class="text-sm text-gray-500">Use this space for additional notes</p>
+                </div>
             </div>
         </div>
-    </div>
+    </main>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="app.js"></script>

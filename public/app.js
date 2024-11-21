@@ -8,6 +8,7 @@ const socket = io({
 const startButton = document.getElementById('startButton');
 const stopButton = document.getElementById('stopButton');
 const transcriptionArea = document.getElementById('transcription');
+const translationArea = document.getElementById('secondary-text');
 
 let mediaRecorder;
 let audioContext;
@@ -16,6 +17,7 @@ let processor;
 const bufferSize = 2048;
 let finalTranscript = '';
 let interimTranscript = '';
+let translatedText = '';
 
 // Debug logging
 console.log('Script loaded');
@@ -125,6 +127,11 @@ function updateTranscriptionArea() {
     transcriptionArea.value = finalTranscript + (interimTranscript ? ' ' + interimTranscript : '');
 }
 
+// Update the translation area with translated text
+function updateTranslationArea() {
+    translationArea.value = translatedText;
+}
+
 // Handle transcription updates
 socket.on('transcription', (data) => {
     console.log('Received transcription:', data);
@@ -139,6 +146,13 @@ socket.on('transcription', (data) => {
     }
     
     updateTranscriptionArea();
+});
+
+// Handle translation updates
+socket.on('translation', (data) => {
+    console.log('Received translation:', data);
+    translatedText += (translatedText ? '\n' : '') + data.translated;
+    updateTranslationArea();
 });
 
 // Handle connection status

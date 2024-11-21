@@ -14,6 +14,8 @@ let audioContext;
 let audioInput;
 let processor;
 const bufferSize = 2048;
+let finalTranscript = '';
+let interimTranscript = '';
 
 // Debug logging
 console.log('Script loaded');
@@ -68,7 +70,6 @@ async function initAudioContext() {
 // Start recording
 startButton.addEventListener('click', async () => {
     console.log('Start button clicked');
-    transcriptionArea.value = '';
     startButton.disabled = true;
     stopButton.disabled = false;
 
@@ -106,16 +107,38 @@ stopButton.addEventListener('click', () => {
 
         socket.emit('endGoogleCloudStream');
         console.log('Stopped recording');
+        
+        // Add the last interim transcript to final if it exists
+        if (interimTranscript) {
+            finalTranscript += (finalTranscript ? ' ' : '') + interimTranscript;
+            interimTranscript = '';
+            updateTranscriptionArea();
+        }
     } catch (error) {
         console.error('Error stopping recording:', error);
         alert('Error stopping recording.');
     }
 });
 
+// Update the transcription area with current transcripts
+function updateTranscriptionArea() {
+    transcriptionArea.value = finalTranscript + (interimTranscript ? ' ' + interimTranscript : '');
+}
+
 // Handle transcription updates
-socket.on('transcription', (text) => {
-    console.log('Received transcription:', text);
-    transcriptionArea.value = text;
+socket.on('transcription', (data) => {
+    console.log('Received transcription:', data);
+    
+    if (data.isFinal) {
+        // Add to final transcript with proper spacing
+        finalTranscript += (finalTranscript ? ' ' : '') + data.text;
+        interimTranscript = '';
+    } else {
+        // Update interim transcript
+        interimTranscript = data.text;
+    }
+    
+    updateTranscriptionArea();
 });
 
 // Handle connection status

@@ -65,11 +65,14 @@ io.on('connection', (socket) => {
                     socket.emit('error', 'Speech recognition error occurred: ' + error.message);
                 })
                 .on('data', (data) => {
-                    console.log('Received data from Google Cloud Speech:', JSON.stringify(data, null, 2));
                     if (data.results[0] && data.results[0].alternatives[0]) {
-                        const transcription = data.results[0].alternatives[0].transcript;
-                        console.log('Sending transcription to client:', transcription);
-                        socket.emit('transcription', transcription);
+                        const transcript = data.results[0].alternatives[0].transcript;
+                        const isFinal = data.results[0].isFinal;
+                        
+                        socket.emit('transcription', {
+                            text: transcript,
+                            isFinal: isFinal
+                        });
                     }
                 })
                 .on('end', () => {
@@ -88,16 +91,11 @@ io.on('connection', (socket) => {
             try {
                 // Convert the ArrayBuffer to Buffer
                 const buffer = Buffer.from(data);
-                console.log('Received audio data length:', buffer.length);
-                
                 recognizeStream.write(buffer);
-                console.log('Audio data written to stream');
             } catch (error) {
                 console.error('Error writing to recognize stream:', error);
                 socket.emit('error', 'Error processing audio: ' + error.message);
             }
-        } else {
-            console.log('Recognize stream not ready or not writable');
         }
     });
 

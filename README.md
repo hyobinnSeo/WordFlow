@@ -30,7 +30,7 @@ A real-time speech-to-text application using Google Cloud Speech-to-Text API. Th
    ```
 
 3. Ensure your Google Cloud credentials file is placed in the `keys` directory:
-   - The file should be named `voiceflow-442410-0481bfc9b57e.json`
+   - The file should be named `voiceflow-(numbers).json`
    - Make sure it has the necessary permissions for the Speech-to-Text API
 
 4. Start the server:

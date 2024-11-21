@@ -168,7 +168,7 @@ socket.on('transcription', (data) => {
 // Handle translation updates
 socket.on('translation', (data) => {
     console.log('Received translation:', data);
-    translatedText += (translatedText ? '\n' : '') + data.translated;
+    translatedText += (translatedText ? ' ' : '') + data.translated;
     updateTranslationArea();
 });
 

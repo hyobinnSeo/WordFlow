@@ -61,6 +61,15 @@ body {
     cursor: not-allowed;
 }
 
+#autoScrollButton {
+    background-color: #2196F3;
+    color: white;
+}
+
+#autoScrollButton:hover {
+    background-color: #1976D2;
+}
+
 .text-areas-container {
     display: flex;
     gap: 1rem;

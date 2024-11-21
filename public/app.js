@@ -7,6 +7,7 @@ const socket = io({
 
 const startButton = document.getElementById('startButton');
 const stopButton = document.getElementById('stopButton');
+const autoScrollButton = document.getElementById('autoScrollButton');
 const transcriptionArea = document.getElementById('transcription');
 const translationArea = document.getElementById('secondary-text');
 
@@ -18,9 +19,23 @@ const bufferSize = 2048;
 let finalTranscript = '';
 let interimTranscript = '';
 let translatedText = '';
+let isAutoScrollEnabled = true;
 
 // Debug logging
 console.log('Script loaded');
+
+// Auto-scroll toggle functionality
+autoScrollButton.addEventListener('click', () => {
+    isAutoScrollEnabled = !isAutoScrollEnabled;
+    autoScrollButton.textContent = `Auto-scroll: ${isAutoScrollEnabled ? 'ON' : 'OFF'}`;
+});
+
+// Function to handle auto-scrolling
+function autoScrollTextArea(textarea) {
+    if (isAutoScrollEnabled) {
+        textarea.scrollTop = textarea.scrollHeight;
+    }
+}
 
 // Initialize audio context
 async function initAudioContext() {
@@ -125,11 +140,13 @@ stopButton.addEventListener('click', () => {
 // Update the transcription area with current transcripts
 function updateTranscriptionArea() {
     transcriptionArea.value = finalTranscript + (interimTranscript ? ' ' + interimTranscript : '');
+    autoScrollTextArea(transcriptionArea);
 }
 
 // Update the translation area with translated text
 function updateTranslationArea() {
     translationArea.value = translatedText;
+    autoScrollTextArea(translationArea);
 }
 
 // Handle transcription updates

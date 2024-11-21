@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <!-- Load socket.io client matching server version -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 </head>
 <body>
     <header class="header">
@@ -28,6 +30,9 @@
                 </button>
                 <button id="autoScrollButton" class="control-button">
                     ⟳ Auto-scroll: ON
+                </button>
+                <button id="inputSourceButton" class="control-button">
+                    🎤 Input: Microphone
                 </button>
             </div>
 
@@ -60,7 +65,6 @@
         </div>
     </main>
 
-    <script src="/socket.io/socket.io.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

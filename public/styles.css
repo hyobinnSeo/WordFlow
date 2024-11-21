@@ -96,12 +96,12 @@ body {
   transform: none;
 }
 
-#autoScrollButton {
+#autoScrollButton, #inputSourceButton {
   background-color: var(--navy-500);
   color: white;
 }
 
-#autoScrollButton:hover {
+#autoScrollButton:hover, #inputSourceButton:hover {
   background-color: var(--navy-600);
   transform: translateY(-1px);
 }

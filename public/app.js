@@ -23,8 +23,16 @@ let translatedText = '';
 let isAutoScrollEnabled = true;
 let isMicrophoneInput = true;
 
+// Check if system audio capture is supported
+const isSystemAudioSupported = () => {
+    return !(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) 
+        && navigator.mediaDevices 
+        && typeof navigator.mediaDevices.getDisplayMedia === 'function';
+};
+
 // Debug logging
 console.log('Script loaded');
+console.log('System audio support:', isSystemAudioSupported());
 
 // Auto-scroll toggle functionality
 autoScrollButton.addEventListener('click', () => {
@@ -34,6 +42,13 @@ autoScrollButton.addEventListener('click', () => {
 
 // Input source toggle functionality
 inputSourceButton.addEventListener('click', async () => {
+    if (!isSystemAudioSupported() && !isMicrophoneInput) {
+        alert('System audio capture is not supported on mobile devices. Using microphone input instead.');
+        isMicrophoneInput = true;
+        inputSourceButton.textContent = `🎤 Input: Microphone`;
+        return;
+    }
+
     if (audioContext) {
         // Stop current recording if active
         if (!startButton.disabled) {
@@ -86,6 +101,13 @@ async function initMicrophoneAudio() {
 
 // Initialize audio context for system sound
 async function initSystemAudio() {
+    if (!isSystemAudioSupported()) {
+        alert('System audio capture is not supported on this device. Using microphone input instead.');
+        isMicrophoneInput = true;
+        inputSourceButton.textContent = `🎤 Input: Microphone`;
+        return initMicrophoneAudio();
+    }
+
     try {
         console.log('Requesting system audio access...');
         
@@ -126,11 +148,11 @@ async function initSystemAudio() {
         } else if (err.name === 'NotReadableError') {
             alert('Could not access system audio. Please ensure no other application is using exclusive audio access.');
         } else {
-            alert('Error accessing system audio: ' + err.message + '\nPlease ensure system audio sharing is enabled and try again.');
+            alert('Error accessing system audio. Switching to microphone input.');
+            isMicrophoneInput = true;
+            inputSourceButton.textContent = `🎤 Input: Microphone`;
+            return initMicrophoneAudio();
         }
-        // Reset to microphone input
-        isMicrophoneInput = true;
-        inputSourceButton.textContent = `🎤 Input: Microphone`;
     }
 }
 

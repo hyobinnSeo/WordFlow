@@ -150,7 +150,7 @@ body {
   color: var(--gray-700);
 }
 
-#transcription, #secondary-text {
+#transcription, #translation {
   width: 100%;
   height: 300px;
   padding: 0.9rem;
@@ -166,7 +166,7 @@ body {
   letter-spacing: -0.011em;
 }
 
-#transcription:focus, #secondary-text:focus {
+#transcription:focus, #translation:focus {
   outline: none;
   border-color: var(--navy-400);
   box-shadow: 0 0 0 3px rgba(98, 125, 152, 0.1);

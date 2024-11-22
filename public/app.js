@@ -8,7 +8,7 @@ const socket = io({
 const recordButton = document.getElementById('recordButton');
 const autoScrollButton = document.getElementById('autoScrollButton');
 const transcriptionArea = document.getElementById('transcription');
-const translationArea = document.getElementById('secondary-text');
+const translationArea = document.getElementById('translation');
 const copyTranscriptionButton = document.getElementById('copyTranscriptionButton');
 const copyTranslationButton = document.getElementById('copyTranslationButton');
 

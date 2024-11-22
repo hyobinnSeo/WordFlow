@@ -8,8 +8,8 @@ const socket = io({
 const recordButton = document.getElementById('recordButton');
 const autoScrollButton = document.getElementById('autoScrollButton');
 const translationModeButton = document.getElementById('translationModeButton');
-const transcriptionArea = document.getElementById('transcription');
-const translationArea = document.getElementById('secondary-text');
+const englishTextArea = document.getElementById('english-text');
+const koreanTextArea = document.getElementById('korean-text');
 
 let mediaRecorder;
 let audioContext;
@@ -17,12 +17,12 @@ let audioInput;
 let processor;
 let mediaStream;
 const bufferSize = 2048;
-let finalTranscript = '';
+let englishText = '';
+let koreanText = '';
 let interimTranscript = '';
-let translatedText = '';
 let isAutoScrollEnabled = true;
 let isRecording = false;
-let isKoreanToEnglish = false; // Changed default to false (EN→KO)
+let isKoreanToEnglish = false; // false means EN→KO, true means KO→EN
 
 // Debug logging
 console.log('Script loaded');
@@ -197,11 +197,15 @@ recordButton.addEventListener('click', async () => {
             recordButton.classList.remove('recording');
             console.log('Stopped recording');
             
-            // Add the last interim transcript to final if it exists
+            // Add the last interim transcript if it exists
             if (interimTranscript) {
-                finalTranscript += (finalTranscript ? '\n\n' : '') + interimTranscript;
+                if (isKoreanToEnglish) {
+                    koreanText += (koreanText ? '\n\n' : '') + interimTranscript;
+                } else {
+                    englishText += (englishText ? '\n\n' : '') + interimTranscript;
+                }
                 interimTranscript = '';
-                updateTranscriptionArea();
+                updateTextAreas();
             }
         } catch (error) {
             console.error('Error stopping recording:', error);
@@ -210,16 +214,12 @@ recordButton.addEventListener('click', async () => {
     }
 });
 
-// Update the transcription area with current transcripts
-function updateTranscriptionArea() {
-    transcriptionArea.value = finalTranscript + (interimTranscript ? ' ' + interimTranscript : '');
-    autoScrollTextArea(transcriptionArea);
-}
-
-// Update the translation area with translated text
-function updateTranslationArea() {
-    translationArea.value = translatedText;
-    autoScrollTextArea(translationArea);
+// Update both text areas
+function updateTextAreas() {
+    englishTextArea.value = englishText + (isKoreanToEnglish && interimTranscript ? '' : interimTranscript);
+    koreanTextArea.value = koreanText + (isKoreanToEnglish ? interimTranscript : '');
+    autoScrollTextArea(englishTextArea);
+    autoScrollTextArea(koreanTextArea);
 }
 
 // Handle transcription updates
@@ -227,22 +227,28 @@ socket.on('transcription', (data) => {
     console.log('Received transcription:', data);
     
     if (data.isFinal) {
-        // Add to final transcript with two new lines between sentences
-        finalTranscript += (finalTranscript ? '\n\n' : '') + data.text;
+        if (isKoreanToEnglish) {
+            koreanText += (koreanText ? '\n\n' : '') + data.text;
+        } else {
+            englishText += (englishText ? '\n\n' : '') + data.text;
+        }
         interimTranscript = '';
     } else {
-        // Update interim transcript
         interimTranscript = data.text;
     }
     
-    updateTranscriptionArea();
+    updateTextAreas();
 });
 
 // Handle translation updates
 socket.on('translation', (data) => {
     console.log('Received translation:', data);
-    translatedText += (translatedText ? '\n\n' : '') + data.translated;
-    updateTranslationArea();
+    if (isKoreanToEnglish) {
+        englishText += (englishText ? '\n\n' : '') + data.translated;
+    } else {
+        koreanText += (koreanText ? '\n\n' : '') + data.translated;
+    }
+    updateTextAreas();
 });
 
 // Handle connection status

@@ -98,20 +98,18 @@ app.get('/', (req, res) => {
 });
 
 // Function to create a new recognize stream
-function createRecognizeStream(socket) {
-    if (socket.streamCreationTimeout) {
-        clearTimeout(socket.streamCreationTimeout);
-        socket.streamCreationTimeout = null;
-    }
+function createRecognizeStream(socket, primaryLanguage = 'en-US') {
+    console.log('Starting new recognize stream with primary language:', primaryLanguage);
     
-    console.log('Starting new recognize stream...');
+    // Set the alternative language based on primary language
+    const alternativeLanguage = primaryLanguage === 'en-US' ? 'ko-KR' : 'en-US';
     
     const request = {
         config: {
             encoding: 'LINEAR16',
             sampleRateHertz: 16000,
-            languageCode: 'en-US',  // Set English as primary for better language switching
-            alternativeLanguageCodes: ['ko-KR'],  // Add Korean as alternative
+            languageCode: primaryLanguage,
+            alternativeLanguageCodes: [alternativeLanguage],
             enableAutomaticPunctuation: true,
             model: 'default',
             useEnhanced: true,
@@ -119,8 +117,7 @@ function createRecognizeStream(socket) {
                 interactionType: 'DICTATION',
                 microphoneDistance: 'NEARFIELD',
                 recordingDeviceType: 'PC_MIC',
-            },
-            enableLanguageIdentification: true  // Enable dynamic language identification
+            }
         },
         interimResults: true
     };
@@ -128,11 +125,13 @@ function createRecognizeStream(socket) {
     const recognizeStream = client
         .streamingRecognize(request)
         .on('error', (error) => {
-            if (error.message.includes('Audio Timeout Error')) {
-                // For timeout errors, only log them
-                console.log('Audio timeout detected, waiting for next audio input...');
+            if (error.code === 11 || error.message.includes('exceeded')) {
+                // Create new stream with opposite primary language
+                if (socket.isStreamActive) {
+                    const newPrimaryLang = primaryLanguage === 'en-US' ? 'ko-KR' : 'en-US';
+                    socket.recognizeStream = createRecognizeStream(socket, newPrimaryLang);
+                }
             } else {
-                // For other errors, emit to client
                 console.error('Error in recognize stream:', error);
                 socket.emit('error', 'Speech recognition error occurred: ' + error.message);
             }
@@ -141,15 +140,16 @@ function createRecognizeStream(socket) {
             if (data.results[0] && data.results[0].alternatives[0]) {
                 const transcript = data.results[0].alternatives[0].transcript;
                 const isFinal = data.results[0].isFinal;
+                const detectedLanguage = data.results[0].languageCode;
                 
                 // Send original transcription
                 socket.emit('transcription', {
                     text: transcript,
                     isFinal: isFinal,
-                    languageCode: data.results[0].languageCode
+                    languageCode: detectedLanguage
                 });
 
-                // If it's a final result, translate and handle stream reset
+                // If it's a final result, translate and generate TTS
                 if (isFinal && socket.isStreamActive) {
                     try {
                         const result = await detectAndTranslate(transcript);
@@ -163,21 +163,17 @@ function createRecognizeStream(socket) {
                         // Generate speech for the translation
                         try {
                             const audioContent = await synthesizeSpeech(result.translation, result.targetLang);
-                            // Convert audio buffer to base64 and send to client
                             socket.emit('tts-audio', audioContent.toString('base64'));
                         } catch (error) {
                             console.error('TTS error:', error);
                             socket.emit('error', 'TTS error: ' + error.message);
                         }
-                        
-                        // Schedule stream recreation with delay
-                        socket.streamCreationTimeout = setTimeout(() => {
-                            if (socket.isStreamActive && socket.recognizeStream) {
-                                const currentStream = socket.recognizeStream;
-                                socket.recognizeStream = createRecognizeStream(socket);
-                                currentStream.end();
-                            }
-                        }, 500); // 500ms delay before creating new stream
+
+                        // End current stream and create a new one with the detected language
+                        if (socket.isStreamActive) {
+                            recognizeStream.end();
+                            socket.recognizeStream = createRecognizeStream(socket, detectedLanguage);
+                        }
                     } catch (error) {
                         socket.emit('error', 'Translation error: ' + error.message);
                     }
@@ -197,7 +193,6 @@ io.on('connection', (socket) => {
     
     socket.recognizeStream = null;
     socket.isStreamActive = false;
-    socket.streamCreationTimeout = null;
 
     socket.on('startGoogleCloudStream', async () => {
         try {
@@ -228,11 +223,6 @@ io.on('connection', (socket) => {
     });
 
     socket.on('endGoogleCloudStream', () => {
-        if (socket.streamCreationTimeout) {
-            clearTimeout(socket.streamCreationTimeout);
-            socket.streamCreationTimeout = null;
-        }
-        
         if (socket.recognizeStream && socket.isStreamActive) {
             try {
                 socket.isStreamActive = false;
@@ -247,11 +237,6 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         console.log('Client disconnected');
-        
-        if (socket.streamCreationTimeout) {
-            clearTimeout(socket.streamCreationTimeout);
-            socket.streamCreationTimeout = null;
-        }
         
         if (socket.recognizeStream && socket.isStreamActive) {
             try {

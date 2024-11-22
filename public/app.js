@@ -15,9 +15,9 @@ const targetLangTag = document.getElementById('targetLang');
 let mediaRecorder;
 let audioContext;
 let audioInput;
-let processor;
+let workletNode;
 let mediaStream;
-const bufferSize = 2048;
+let playbackContext;
 let finalTranscript = '';
 let interimTranscript = '';
 let isAutoScrollEnabled = true;
@@ -34,11 +34,18 @@ const languageNames = {
 // Debug logging
 console.log('Script loaded');
 
-// Function to play TTS audio
+// Initialize playback context for TTS
+function initPlaybackContext() {
+    if (!playbackContext) {
+        playbackContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return playbackContext;
+}
+
+// Function to play TTS audio without interrupting input
 async function playTTSAudio(base64Audio) {
     try {
-        // Create a new audio context for playback if needed
-        const playbackContext = new (window.AudioContext || window.webkitAudioContext)();
+        const context = initPlaybackContext();
         
         // Convert base64 to array buffer
         const binaryString = atob(base64Audio);
@@ -49,17 +56,16 @@ async function playTTSAudio(base64Audio) {
         }
 
         // Decode the audio data
-        const audioBuffer = await playbackContext.decodeAudioData(bytes.buffer);
+        const audioBuffer = await context.decodeAudioData(bytes.buffer);
         
         // Create and play the audio
-        const source = playbackContext.createBufferSource();
+        const source = context.createBufferSource();
         source.buffer = audioBuffer;
-        source.connect(playbackContext.destination);
+        source.connect(context.destination);
         source.start(0);
         
-        // Clean up after playback
         source.onended = () => {
-            playbackContext.close();
+            source.disconnect();
         };
     } catch (error) {
         console.error('Error playing TTS audio:', error);
@@ -79,7 +85,7 @@ function autoScrollTextArea(textarea) {
     }
 }
 
-// Initialize audio context
+// Initialize audio context with AudioWorklet
 async function initAudioContext() {
     try {
         console.log('Requesting microphone access...');
@@ -98,27 +104,22 @@ async function initAudioContext() {
             sampleRate: 16000,
             latencyHint: 'interactive'
         });
+
+        // Load and initialize the audio worklet
+        await audioContext.audioWorklet.addModule('audioProcessor.js');
         
         audioInput = audioContext.createMediaStreamSource(mediaStream);
-        processor = audioContext.createScriptProcessor(bufferSize, 1, 1);
+        workletNode = new AudioWorkletNode(audioContext, 'audio-processor');
 
-        processor.onaudioprocess = (e) => {
-            const inputData = e.inputBuffer.getChannelData(0);
-            
-            // Convert Float32Array to Int16Array
-            const int16Data = new Int16Array(inputData.length);
-            for (let i = 0; i < inputData.length; i++) {
-                // Convert float to int16
-                const s = Math.max(-1, Math.min(1, inputData[i]));
-                int16Data[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-            }
-            
-            // Send the buffer
-            socket.emit('audioData', int16Data.buffer);
+        // Handle audio data from worklet
+        workletNode.port.onmessage = (event) => {
+            socket.emit('audioData', event.data);
         };
 
-        audioInput.connect(processor);
-        processor.connect(audioContext.destination);
+        // Connect the audio graph
+        audioInput.connect(workletNode);
+        workletNode.connect(audioContext.destination);
+        
         console.log('Audio context initialized with sample rate:', audioContext.sampleRate);
     } catch (err) {
         console.error('Error accessing microphone:', err);
@@ -138,8 +139,8 @@ recordButton.addEventListener('click', async () => {
                 await audioContext.resume();
             }
             
-            audioInput.connect(processor);
-            processor.connect(audioContext.destination);
+            // Initialize playback context if needed
+            initPlaybackContext();
 
             // Reset transcripts and translations
             finalTranscript = '';
@@ -162,9 +163,9 @@ recordButton.addEventListener('click', async () => {
         // Stop recording
         console.log('Stopping recording...');
         try {
-            if (audioInput && processor) {
-                audioInput.disconnect(processor);
-                processor.disconnect(audioContext.destination);
+            if (audioInput && workletNode) {
+                audioInput.disconnect();
+                workletNode.disconnect();
             }
 
             // Stop all tracks in the media stream
@@ -175,10 +176,14 @@ recordButton.addEventListener('click', async () => {
                 mediaStream = null;
             }
 
-            // Reset audio context
+            // Close audio contexts
             if (audioContext) {
                 await audioContext.close();
                 audioContext = null;
+            }
+            if (playbackContext) {
+                await playbackContext.close();
+                playbackContext = null;
             }
 
             socket.emit('endGoogleCloudStream');

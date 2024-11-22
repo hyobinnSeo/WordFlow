@@ -70,30 +70,35 @@ body {
   min-width: 120px;
 }
 
-#startButton {
+.record-button {
   background-color: var(--navy-600);
   color: white;
 }
 
-#startButton:hover {
+.record-button:hover {
   background-color: var(--navy-700);
   transform: translateY(-1px);
 }
 
-#stopButton {
+.record-button.recording {
   background-color: #ef4444;
-  color: white;
+  animation: pulse 2s infinite;
 }
 
-#stopButton:hover {
+.record-button.recording:hover {
   background-color: #dc2626;
-  transform: translateY(-1px);
 }
 
-#stopButton:disabled {
-  background-color: var(--gray-300);
-  cursor: not-allowed;
-  transform: none;
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
 }
 
 #autoScrollButton {

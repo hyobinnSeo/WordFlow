@@ -5,8 +5,7 @@ const socket = io({
     reconnectionDelay: 1000
 });
 
-const startButton = document.getElementById('startButton');
-const stopButton = document.getElementById('stopButton');
+const recordButton = document.getElementById('recordButton');
 const autoScrollButton = document.getElementById('autoScrollButton');
 const transcriptionArea = document.getElementById('transcription');
 const translationArea = document.getElementById('secondary-text');
@@ -20,6 +19,7 @@ let finalTranscript = '';
 let interimTranscript = '';
 let translatedText = '';
 let isAutoScrollEnabled = true;
+let isRecording = false;
 
 // Debug logging
 console.log('Script loaded');
@@ -84,56 +84,55 @@ async function initAudioContext() {
     }
 }
 
-// Start recording
-startButton.addEventListener('click', async () => {
-    console.log('Start button clicked');
-    startButton.disabled = true;
-    stopButton.disabled = false;
+// Toggle recording
+recordButton.addEventListener('click', async () => {
+    if (!isRecording) {
+        // Start recording
+        console.log('Starting recording...');
+        try {
+            if (!audioContext) {
+                await initAudioContext();
+            } else if (audioContext.state === 'suspended') {
+                await audioContext.resume();
+            }
+            
+            audioInput.connect(processor);
+            processor.connect(audioContext.destination);
 
-    try {
-        if (!audioContext) {
-            await initAudioContext();
-        } else if (audioContext.state === 'suspended') {
-            await audioContext.resume();
+            socket.emit('startGoogleCloudStream');
+            isRecording = true;
+            recordButton.textContent = '⏹ Stop Recording';
+            recordButton.classList.add('recording');
+            console.log('Started recording');
+        } catch (error) {
+            console.error('Error starting recording:', error);
+            alert('Error starting recording. Please try again.');
         }
-        
-        audioInput.connect(processor);
-        processor.connect(audioContext.destination);
+    } else {
+        // Stop recording
+        console.log('Stopping recording...');
+        try {
+            if (audioInput && processor) {
+                audioInput.disconnect(processor);
+                processor.disconnect(audioContext.destination);
+            }
 
-        socket.emit('startGoogleCloudStream');
-        console.log('Started recording');
-    } catch (error) {
-        console.error('Error starting recording:', error);
-        alert('Error starting recording. Please try again.');
-        startButton.disabled = false;
-        stopButton.disabled = true;
-    }
-});
-
-// Stop recording
-stopButton.addEventListener('click', () => {
-    console.log('Stop button clicked');
-    startButton.disabled = false;
-    stopButton.disabled = true;
-
-    try {
-        if (audioInput && processor) {
-            audioInput.disconnect(processor);
-            processor.disconnect(audioContext.destination);
+            socket.emit('endGoogleCloudStream');
+            isRecording = false;
+            recordButton.textContent = '⏺ Start Recording';
+            recordButton.classList.remove('recording');
+            console.log('Stopped recording');
+            
+            // Add the last interim transcript to final if it exists
+            if (interimTranscript) {
+                finalTranscript += (finalTranscript ? '\n\n' : '') + interimTranscript;
+                interimTranscript = '';
+                updateTranscriptionArea();
+            }
+        } catch (error) {
+            console.error('Error stopping recording:', error);
+            alert('Error stopping recording.');
         }
-
-        socket.emit('endGoogleCloudStream');
-        console.log('Stopped recording');
-        
-        // Add the last interim transcript to final if it exists
-        if (interimTranscript) {
-            finalTranscript += (finalTranscript ? '\n\n' : '') + interimTranscript;
-            interimTranscript = '';
-            updateTranscriptionArea();
-        }
-    } catch (error) {
-        console.error('Error stopping recording:', error);
-        alert('Error stopping recording.');
     }
 });
 
@@ -175,13 +174,15 @@ socket.on('translation', (data) => {
 // Handle connection status
 socket.on('connect', () => {
     console.log('Connected to server');
-    startButton.disabled = false;
+    recordButton.disabled = false;
 });
 
 socket.on('disconnect', () => {
     console.log('Disconnected from server');
-    startButton.disabled = true;
-    stopButton.disabled = true;
+    recordButton.disabled = true;
+    isRecording = false;
+    recordButton.textContent = '⏺ Start Recording';
+    recordButton.classList.remove('recording');
 });
 
 // Handle errors

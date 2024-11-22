@@ -72,6 +72,40 @@ function autoScrollTextArea(textarea) {
     }
 }
 
+// Function to stop recording UI
+function stopRecordingUI() {
+    if (audioInput && processor) {
+        audioInput.disconnect(processor);
+        processor.disconnect(audioContext.destination);
+    }
+
+    // Stop all tracks in the media stream
+    if (mediaStream) {
+        mediaStream.getTracks().forEach(track => {
+            track.stop();
+        });
+        mediaStream = null;
+    }
+
+    // Reset audio context
+    if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+    }
+
+    isRecording = false;
+    recordButton.textContent = '⏺ Start Recording';
+    recordButton.classList.remove('recording');
+    console.log('Stopped recording');
+    
+    // Add the last interim transcript to final if it exists
+    if (interimTranscript) {
+        finalTranscript += (finalTranscript ? '\n\n' : '') + interimTranscript;
+        interimTranscript = '';
+        updateTranscriptionArea();
+    }
+}
+
 // Initialize audio context
 async function initAudioContext() {
     try {
@@ -147,37 +181,8 @@ recordButton.addEventListener('click', async () => {
         // Stop recording
         console.log('Stopping recording...');
         try {
-            if (audioInput && processor) {
-                audioInput.disconnect(processor);
-                processor.disconnect(audioContext.destination);
-            }
-
-            // Stop all tracks in the media stream
-            if (mediaStream) {
-                mediaStream.getTracks().forEach(track => {
-                    track.stop();
-                });
-                mediaStream = null;
-            }
-
-            // Reset audio context
-            if (audioContext) {
-                await audioContext.close();
-                audioContext = null;
-            }
-
             socket.emit('endGoogleCloudStream');
-            isRecording = false;
-            recordButton.textContent = '⏺ Start Recording';
-            recordButton.classList.remove('recording');
-            console.log('Stopped recording');
-            
-            // Add the last interim transcript to final if it exists
-            if (interimTranscript) {
-                finalTranscript += (finalTranscript ? '\n\n' : '') + interimTranscript;
-                interimTranscript = '';
-                updateTranscriptionArea();
-            }
+            stopRecordingUI();
         } catch (error) {
             console.error('Error stopping recording:', error);
             alert('Error stopping recording.');
@@ -218,6 +223,22 @@ socket.on('translation', (data) => {
     console.log('Received translation:', data);
     translatedText += (translatedText ? '\n\n' : '') + data.translated;
     updateTranslationArea();
+});
+
+// Handle recording stopped event
+socket.on('recordingStopped', (data) => {
+    console.log('Recording stopped:', data.reason);
+    stopRecordingUI();
+    if (data.reason === 'Recording limit of 2 hours reached') {
+        alert('Recording automatically stopped after reaching 2-hour limit.');
+    }
+});
+
+// Handle time remaining notifications
+socket.on('timeRemaining', (data) => {
+    if (data.minutes <= 5) {
+        alert(`Recording will automatically stop in ${data.minutes} minute${data.minutes !== 1 ? 's' : ''}`);
+    }
 });
 
 // Handle connection status

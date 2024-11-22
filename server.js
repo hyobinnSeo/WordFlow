@@ -56,7 +56,9 @@ io.on('connection', (socket) => {
     let recognizeStream = null;
     let isStreamActive = false;
     let streamRestartTimeout;
+    let totalDurationTimeout;
     const STREAM_TIMEOUT = 240000; // 4 minutes in milliseconds (safe margin before 305 seconds limit)
+    const TOTAL_DURATION_LIMIT = 7200000; // 2 hours in milliseconds
 
     // Function to create a new recognize stream
     const createRecognizeStream = () => {
@@ -137,11 +139,44 @@ io.on('connection', (socket) => {
         return recognizeStream;
     };
 
+    // Function to stop recording
+    const stopRecording = (reason) => {
+        if (recognizeStream && isStreamActive) {
+            isStreamActive = false;
+            clearTimeout(streamRestartTimeout);
+            clearTimeout(totalDurationTimeout);
+            recognizeStream.end();
+            socket.emit('recordingStopped', { reason: reason });
+            console.log('Recording stopped:', reason);
+        }
+    };
+
     socket.on('startGoogleCloudStream', async () => {
         try {
             isStreamActive = true;
             createRecognizeStream();
             console.log('Successfully created recognize stream');
+
+            // Set up total duration limit
+            clearTimeout(totalDurationTimeout);
+            totalDurationTimeout = setTimeout(() => {
+                stopRecording('Recording limit of 2 hours reached');
+            }, TOTAL_DURATION_LIMIT);
+
+            // Emit time remaining updates every minute
+            let timeRemaining = TOTAL_DURATION_LIMIT;
+            const updateInterval = setInterval(() => {
+                if (!isStreamActive) {
+                    clearInterval(updateInterval);
+                    return;
+                }
+                timeRemaining -= 60000; // Subtract one minute
+                const minutesRemaining = Math.floor(timeRemaining / 60000);
+                if (minutesRemaining <= 5) {
+                    socket.emit('timeRemaining', { minutes: minutesRemaining });
+                }
+            }, 60000);
+
         } catch (error) {
             console.error('Error creating recognize stream:', error);
             socket.emit('error', 'Failed to start speech recognition: ' + error.message);
@@ -163,30 +198,12 @@ io.on('connection', (socket) => {
     });
 
     socket.on('endGoogleCloudStream', () => {
-        if (recognizeStream && isStreamActive) {
-            try {
-                isStreamActive = false;
-                clearTimeout(streamRestartTimeout);
-                recognizeStream.end();
-                console.log('Successfully ended recognize stream');
-            } catch (error) {
-                console.error('Error ending recognize stream:', error);
-                socket.emit('error', 'Error ending stream: ' + error.message);
-            }
-        }
+        stopRecording('Recording manually stopped');
     });
 
     socket.on('disconnect', () => {
         console.log('Client disconnected');
-        if (recognizeStream && isStreamActive) {
-            try {
-                isStreamActive = false;
-                clearTimeout(streamRestartTimeout);
-                recognizeStream.end();
-            } catch (error) {
-                console.error('Error ending recognize stream on disconnect:', error);
-            }
-        }
+        stopRecording('Client disconnected');
     });
 });
 

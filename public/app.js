@@ -9,6 +9,8 @@ const recordButton = document.getElementById('recordButton');
 const autoScrollButton = document.getElementById('autoScrollButton');
 const transcriptionArea = document.getElementById('transcription');
 const translationArea = document.getElementById('secondary-text');
+const copyTranscriptionButton = document.getElementById('copyTranscriptionButton');
+const copyTranslationButton = document.getElementById('copyTranslationButton');
 
 let mediaRecorder;
 let audioContext;
@@ -24,6 +26,38 @@ let isRecording = false;
 
 // Debug logging
 console.log('Script loaded');
+
+// Copy functionality
+async function copyToClipboard(text) {
+    try {
+        await navigator.clipboard.writeText(text);
+        return true;
+    } catch (err) {
+        console.error('Failed to copy text:', err);
+        return false;
+    }
+}
+
+// Copy button event listeners
+copyTranscriptionButton.addEventListener('click', async () => {
+    const success = await copyToClipboard(transcriptionArea.value);
+    const originalText = copyTranscriptionButton.textContent;
+    
+    copyTranscriptionButton.textContent = success ? '✓ Copied!' : '❌ Failed to copy';
+    setTimeout(() => {
+        copyTranscriptionButton.textContent = originalText;
+    }, 2000);
+});
+
+copyTranslationButton.addEventListener('click', async () => {
+    const success = await copyToClipboard(translationArea.value);
+    const originalText = copyTranslationButton.textContent;
+    
+    copyTranslationButton.textContent = success ? '✓ Copied!' : '❌ Failed to copy';
+    setTimeout(() => {
+        copyTranslationButton.textContent = originalText;
+    }, 2000);
+});
 
 // Auto-scroll toggle functionality
 autoScrollButton.addEventListener('click', () => {

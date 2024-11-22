@@ -47,12 +47,17 @@ body {
 }
 
 /* Button styles */
-.buttons-wrapper {
+.buttons-wrapper, .copy-buttons-wrapper {
   display: flex;
   justify-content: center;
   gap: 1rem;
   margin-bottom: 1rem;
   flex-wrap: wrap;
+}
+
+.copy-buttons-wrapper {
+  margin-top: 1.5rem;
+  margin-bottom: 0;
 }
 
 .control-button {
@@ -87,6 +92,20 @@ body {
 
 .record-button.recording:hover {
   background-color: #dc2626;
+}
+
+.copy-button {
+  background-color: var(--navy-500);
+  color: white;
+}
+
+.copy-button:hover {
+  background-color: var(--navy-600);
+  transform: translateY(-1px);
+}
+
+.copy-button:active {
+  transform: translateY(0);
 }
 
 @keyframes pulse {

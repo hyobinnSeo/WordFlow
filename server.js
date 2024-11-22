@@ -54,6 +54,7 @@ io.on('connection', (socket) => {
     console.log('Client connected');
     
     let recognizeStream = null;
+    let isStreamActive = false;
 
     socket.on('startGoogleCloudStream', async () => {
         try {
@@ -85,6 +86,7 @@ io.on('connection', (socket) => {
                 .on('error', (error) => {
                     console.error('Error in recognize stream:', error);
                     socket.emit('error', 'Speech recognition error occurred: ' + error.message);
+                    isStreamActive = false;
                 })
                 .on('data', async (data) => {
                     if (data.results[0] && data.results[0].alternatives[0]) {
@@ -113,17 +115,21 @@ io.on('connection', (socket) => {
                 })
                 .on('end', () => {
                     console.log('Recognize stream ended');
+                    isStreamActive = false;
                 });
 
+            isStreamActive = true;
             console.log('Successfully created recognize stream');
         } catch (error) {
             console.error('Error creating recognize stream:', error);
             socket.emit('error', 'Failed to start speech recognition: ' + error.message);
+            isStreamActive = false;
         }
     });
 
     socket.on('audioData', (data) => {
-        if (recognizeStream && recognizeStream.writable) {
+        // Check if stream exists, is active, and is writable
+        if (recognizeStream && isStreamActive && !recognizeStream.destroyed && recognizeStream.writable) {
             try {
                 // Convert the ArrayBuffer to Buffer
                 const buffer = Buffer.from(data);
@@ -131,13 +137,15 @@ io.on('connection', (socket) => {
             } catch (error) {
                 console.error('Error writing to recognize stream:', error);
                 socket.emit('error', 'Error processing audio: ' + error.message);
+                isStreamActive = false;
             }
         }
     });
 
     socket.on('endGoogleCloudStream', () => {
-        if (recognizeStream) {
+        if (recognizeStream && isStreamActive) {
             try {
+                isStreamActive = false;  // Set this first to prevent any new writes
                 recognizeStream.end();
                 console.log('Successfully ended recognize stream');
             } catch (error) {
@@ -149,8 +157,9 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         console.log('Client disconnected');
-        if (recognizeStream) {
+        if (recognizeStream && isStreamActive) {
             try {
+                isStreamActive = false;
                 recognizeStream.end();
             } catch (error) {
                 console.error('Error ending recognize stream on disconnect:', error);

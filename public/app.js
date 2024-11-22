@@ -127,7 +127,7 @@ stopButton.addEventListener('click', () => {
         
         // Add the last interim transcript to final if it exists
         if (interimTranscript) {
-            finalTranscript += (finalTranscript ? '\n' : '') + interimTranscript;
+            finalTranscript += (finalTranscript ? '\n\n' : '') + interimTranscript;
             interimTranscript = '';
             updateTranscriptionArea();
         }
@@ -154,8 +154,8 @@ socket.on('transcription', (data) => {
     console.log('Received transcription:', data);
     
     if (data.isFinal) {
-        // Add to final transcript with a new line between sentences
-        finalTranscript += (finalTranscript ? '\n' : '') + data.text;
+        // Add to final transcript with two new lines between sentences
+        finalTranscript += (finalTranscript ? '\n\n' : '') + data.text;
         interimTranscript = '';
     } else {
         // Update interim transcript
@@ -168,7 +168,7 @@ socket.on('transcription', (data) => {
 // Handle translation updates
 socket.on('translation', (data) => {
     console.log('Received translation:', data);
-    translatedText += (translatedText ? '\n' : '') + data.translated;
+    translatedText += (translatedText ? '\n\n' : '') + data.translated;
     updateTranslationArea();
 });
 

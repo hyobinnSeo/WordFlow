@@ -35,15 +35,26 @@ try {
 }
 
 // Function to synthesize speech
-async function synthesizeSpeech(text) {
+async function synthesizeSpeech(text, targetLang) {
     try {
-        const request = {
-            input: { text: text },
-            voice: {
+        let voiceConfig;
+        if (targetLang === 'en') {
+            voiceConfig = {
                 name: 'en-US-Journey-F',
                 languageCode: 'en-US',
                 model: 'Journey'
-            },
+            };
+        } else if (targetLang === 'ko') {
+            voiceConfig = {
+                name: 'ko-KR-Neural2-A',
+                languageCode: 'ko-KR',
+                model: 'Neural2'
+            };
+        }
+
+        const request = {
+            input: { text: text },
+            voice: voiceConfig,
             audioConfig: {
                 audioEncoding: 'MP3'
             },
@@ -149,16 +160,14 @@ function createRecognizeStream(socket) {
                             toLang: result.targetLang
                         });
 
-                        // Generate speech for the translation if target language is English
-                        if (result.targetLang === 'en') {
-                            try {
-                                const audioContent = await synthesizeSpeech(result.translation);
-                                // Convert audio buffer to base64 and send to client
-                                socket.emit('tts-audio', audioContent.toString('base64'));
-                            } catch (error) {
-                                console.error('TTS error:', error);
-                                socket.emit('error', 'TTS error: ' + error.message);
-                            }
+                        // Generate speech for the translation
+                        try {
+                            const audioContent = await synthesizeSpeech(result.translation, result.targetLang);
+                            // Convert audio buffer to base64 and send to client
+                            socket.emit('tts-audio', audioContent.toString('base64'));
+                        } catch (error) {
+                            console.error('TTS error:', error);
+                            socket.emit('error', 'TTS error: ' + error.message);
                         }
                         
                         // Schedule stream recreation with delay

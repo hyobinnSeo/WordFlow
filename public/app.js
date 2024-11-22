@@ -127,7 +127,7 @@ stopButton.addEventListener('click', () => {
         
         // Add the last interim transcript to final if it exists
         if (interimTranscript) {
-            finalTranscript += (finalTranscript ? ' ' : '') + interimTranscript;
+            finalTranscript += (finalTranscript ? '\n' : '') + interimTranscript;
             interimTranscript = '';
             updateTranscriptionArea();
         }
@@ -154,8 +154,8 @@ socket.on('transcription', (data) => {
     console.log('Received transcription:', data);
     
     if (data.isFinal) {
-        // Add to final transcript with proper spacing
-        finalTranscript += (finalTranscript ? ' ' : '') + data.text;
+        // Add to final transcript with a new line between sentences
+        finalTranscript += (finalTranscript ? '\n' : '') + data.text;
         interimTranscript = '';
     } else {
         // Update interim transcript

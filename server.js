@@ -9,33 +9,57 @@ const io = require('socket.io')(http, {
 });
 const speech = require('@google-cloud/speech');
 const {Translate} = require('@google-cloud/translate').v2;
+const textToSpeech = require('@google-cloud/text-to-speech');
 const path = require('path');
 
 // Serve static files from public directory
 app.use(express.static('public'));
 
-// Create speech and translation clients with error handling
+// Create speech, translation, and TTS clients with error handling
 let client;
 let translate;
+let ttsClient;
 try {
-    // Set credentials for Speech-to-Text
-    process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow-442410-0481bfc9b57e.json');
-    client = new speech.SpeechClient();
+    // Set credentials path for all services
+    const keyPath = path.join(__dirname, 'keys', 'voiceflow-442410-e357e7554da8.json');
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = keyPath;
     
-    // Set credentials for Translation
-    process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow-442410-bbc3162e9dd5.json');
+    // Initialize all clients
+    client = new speech.SpeechClient();
     translate = new Translate();
+    ttsClient = new textToSpeech.TextToSpeechClient();
     
     console.log('Successfully initialized Google Cloud clients');
 } catch (error) {
     console.error('Error initializing Google Cloud clients:', error);
 }
 
+// Function to synthesize speech
+async function synthesizeSpeech(text) {
+    try {
+        const request = {
+            input: { text: text },
+            voice: {
+                name: 'en-US-Journey-F',
+                languageCode: 'en-US',
+                model: 'Journey'
+            },
+            audioConfig: {
+                audioEncoding: 'MP3'
+            },
+        };
+
+        const [response] = await ttsClient.synthesizeSpeech(request);
+        return response.audioContent;
+    } catch (error) {
+        console.error('TTS error:', error);
+        throw error;
+    }
+}
+
 // Detect language and translate text
 async function detectAndTranslate(text) {
     try {
-        process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow-442410-bbc3162e9dd5.json');
-        
         // Detect the language
         const [detection] = await translate.detect(text);
         console.log('Detected language:', detection.language);
@@ -68,9 +92,6 @@ function createRecognizeStream(socket) {
         clearTimeout(socket.streamCreationTimeout);
         socket.streamCreationTimeout = null;
     }
-
-    // Set credentials for Speech-to-Text before starting stream
-    process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow-442410-0481bfc9b57e.json');
     
     console.log('Starting new recognize stream...');
     
@@ -127,6 +148,18 @@ function createRecognizeStream(socket) {
                             fromLang: result.detectedLang,
                             toLang: result.targetLang
                         });
+
+                        // Generate speech for the translation if target language is English
+                        if (result.targetLang === 'en') {
+                            try {
+                                const audioContent = await synthesizeSpeech(result.translation);
+                                // Convert audio buffer to base64 and send to client
+                                socket.emit('tts-audio', audioContent.toString('base64'));
+                            } catch (error) {
+                                console.error('TTS error:', error);
+                                socket.emit('error', 'TTS error: ' + error.message);
+                            }
+                        }
                         
                         // Schedule stream recreation with delay
                         socket.streamCreationTimeout = setTimeout(() => {

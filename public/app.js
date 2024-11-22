@@ -34,6 +34,38 @@ const languageNames = {
 // Debug logging
 console.log('Script loaded');
 
+// Function to play TTS audio
+async function playTTSAudio(base64Audio) {
+    try {
+        // Create a new audio context for playback if needed
+        const playbackContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Convert base64 to array buffer
+        const binaryString = atob(base64Audio);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        // Decode the audio data
+        const audioBuffer = await playbackContext.decodeAudioData(bytes.buffer);
+        
+        // Create and play the audio
+        const source = playbackContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(playbackContext.destination);
+        source.start(0);
+        
+        // Clean up after playback
+        source.onended = () => {
+            playbackContext.close();
+        };
+    } catch (error) {
+        console.error('Error playing TTS audio:', error);
+    }
+}
+
 // Auto-scroll toggle functionality
 autoScrollButton.addEventListener('click', () => {
     isAutoScrollEnabled = !isAutoScrollEnabled;
@@ -207,6 +239,12 @@ socket.on('translation', (data) => {
         originalLangTag.textContent = languageNames[data.fromLang] || data.fromLang;
         targetLangTag.textContent = languageNames[data.toLang] || data.toLang;
     }
+});
+
+// Handle TTS audio
+socket.on('tts-audio', (base64Audio) => {
+    console.log('Received TTS audio, playing...');
+    playTTSAudio(base64Audio);
 });
 
 // Handle connection status

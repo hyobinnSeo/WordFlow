@@ -22,7 +22,7 @@ let interimTranscript = '';
 let translatedText = '';
 let isAutoScrollEnabled = true;
 let isRecording = false;
-let isKoreanToEnglish = true;
+let isKoreanToEnglish = false; // Changed default to false (EN→KO)
 
 // Debug logging
 console.log('Script loaded');

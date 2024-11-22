@@ -55,7 +55,7 @@ io.on('connection', (socket) => {
     
     let recognizeStream = null;
     let isStreamActive = false;
-    let isKoreanToEnglish = true; // Default translation direction
+    let isKoreanToEnglish = false; // Changed default to false (EN→KO)
 
     // Handle translation direction changes
     socket.on('setTranslationDirection', (data) => {
@@ -84,7 +84,7 @@ io.on('connection', (socket) => {
                 config: {
                     encoding: 'LINEAR16',
                     sampleRateHertz: 16000,
-                    languageCode: isKoreanToEnglish ? 'ko-KR' : 'en-US',
+                    languageCode: isKoreanToEnglish ? 'ko-KR' : 'en-US', // Default to en-US for EN→KO
                     enableAutomaticPunctuation: true,
                     model: 'default',
                     useEnhanced: true,

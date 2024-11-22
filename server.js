@@ -102,7 +102,7 @@ function createRecognizeStream(socket, primaryLanguage = 'en-US') {
     console.log('Starting new recognize stream with primary language:', primaryLanguage);
     
     // Set the alternative language based on primary language
-    const alternativeLanguage = primaryLanguage === 'en-US' ? 'ko-KR' : 'en-US';
+    const alternativeLanguage = primaryLanguage.toLowerCase().startsWith('en') ? 'ko-KR' : 'en-US';
     
     const request = {
         config: {
@@ -128,7 +128,7 @@ function createRecognizeStream(socket, primaryLanguage = 'en-US') {
             if (error.code === 11 || error.message.includes('exceeded')) {
                 // Create new stream with opposite primary language
                 if (socket.isStreamActive) {
-                    const newPrimaryLang = primaryLanguage === 'en-US' ? 'ko-KR' : 'en-US';
+                    const newPrimaryLang = primaryLanguage.toLowerCase().startsWith('en') ? 'ko-KR' : 'en-US';
                     socket.recognizeStream = createRecognizeStream(socket, newPrimaryLang);
                 }
             } else {
@@ -172,6 +172,7 @@ function createRecognizeStream(socket, primaryLanguage = 'en-US') {
                         // End current stream and create a new one with the detected language
                         if (socket.isStreamActive) {
                             recognizeStream.end();
+                            // Use the exact detected language code for the new stream
                             socket.recognizeStream = createRecognizeStream(socket, detectedLanguage);
                         }
                     } catch (error) {

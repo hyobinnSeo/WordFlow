@@ -62,109 +62,142 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Function to create a new recognize stream
+function createRecognizeStream(socket) {
+    // Set credentials for Speech-to-Text before starting stream
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow-442410-0481bfc9b57e.json');
+    
+    console.log('Starting new recognize stream...');
+    
+    const request = {
+        config: {
+            encoding: 'LINEAR16',
+            sampleRateHertz: 16000,
+            languageCode: 'ko-KR',  // Set Korean as primary
+            alternativeLanguageCodes: ['en-US'],  // Add English as alternative
+            enableAutomaticPunctuation: true,
+            model: 'default',
+            useEnhanced: true,
+            metadata: {
+                interactionType: 'DICTATION',
+                microphoneDistance: 'NEARFIELD',
+                recordingDeviceType: 'PC_MIC',
+            },
+            enableLanguageIdentification: true,  // Enable dynamic language identification
+            speechContexts: [{
+                phrases: ['한국어', 'English', '영어', 'Korean']  // Add common language-related phrases
+            }]
+        },
+        interimResults: true
+    };
+
+    const recognizeStream = client
+        .streamingRecognize(request)
+        .on('error', (error) => {
+            console.error('Error in recognize stream:', error);
+            
+            // Only emit error if it's not a timeout
+            if (!error.message.includes('Audio Timeout Error')) {
+                socket.emit('error', 'Speech recognition error occurred: ' + error.message);
+            }
+            
+            // Recreate stream if active and not ending
+            if (socket.isStreamActive && !socket.isEnding) {
+                console.log('Recreating stream after error...');
+                socket.recognizeStream = createRecognizeStream(socket);
+            }
+        })
+        .on('data', async (data) => {
+            if (data.results[0] && data.results[0].alternatives[0]) {
+                const transcript = data.results[0].alternatives[0].transcript;
+                const isFinal = data.results[0].isFinal;
+                
+                // Send original transcription
+                socket.emit('transcription', {
+                    text: transcript,
+                    isFinal: isFinal,
+                    languageCode: data.results[0].languageCode
+                });
+
+                // If it's a final result, translate and create new stream
+                if (isFinal && socket.isStreamActive && !socket.isEnding) {
+                    try {
+                        const result = await detectAndTranslate(transcript);
+                        socket.emit('translation', {
+                            original: transcript,
+                            translated: result.translation,
+                            fromLang: result.detectedLang,
+                            toLang: result.targetLang
+                        });
+                        
+                        // Gracefully end current stream and create new one
+                        console.log('Creating new stream after final result...');
+                        const currentStream = socket.recognizeStream;
+                        socket.recognizeStream = createRecognizeStream(socket);
+                        if (currentStream) {
+                            currentStream.end();
+                        }
+                    } catch (error) {
+                        socket.emit('error', 'Translation error: ' + error.message);
+                    }
+                }
+            }
+        })
+        .on('end', () => {
+            console.log('Recognize stream ended');
+            // Create new stream if still active and not ending
+            if (socket.isStreamActive && !socket.isEnding) {
+                console.log('Creating new stream after end...');
+                socket.recognizeStream = createRecognizeStream(socket);
+            }
+        });
+
+    return recognizeStream;
+}
+
 // Socket.IO connection handling
 io.on('connection', (socket) => {
     console.log('Client connected');
     
-    let recognizeStream = null;
-    let isStreamActive = false;
-    let currentLanguage = 'en-US'; // Default language
+    socket.recognizeStream = null;
+    socket.isStreamActive = false;
+    socket.isEnding = false;
 
     socket.on('startGoogleCloudStream', async () => {
         try {
-            // Set credentials for Speech-to-Text before starting stream
-            process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow-442410-0481bfc9b57e.json');
-            
-            console.log('Starting new recognize stream...');
-            
-            const request = {
-                config: {
-                    encoding: 'LINEAR16',
-                    sampleRateHertz: 16000,
-                    languageCode: 'en-US',
-                    alternativeLanguageCodes: ['ko-KR'], // Add Korean as alternative
-                    enableAutomaticPunctuation: true,
-                    model: 'default',
-                    useEnhanced: true,
-                    metadata: {
-                        interactionType: 'DICTATION',
-                        microphoneDistance: 'NEARFIELD',
-                        recordingDeviceType: 'PC_MIC',
-                    }
-                },
-                interimResults: true
-            };
-
-            // Create the stream with detailed logging
-            recognizeStream = client
-                .streamingRecognize(request)
-                .on('error', (error) => {
-                    console.error('Error in recognize stream:', error);
-                    socket.emit('error', 'Speech recognition error occurred: ' + error.message);
-                    isStreamActive = false;
-                })
-                .on('data', async (data) => {
-                    if (data.results[0] && data.results[0].alternatives[0]) {
-                        const transcript = data.results[0].alternatives[0].transcript;
-                        const isFinal = data.results[0].isFinal;
-                        
-                        // Send original transcription
-                        socket.emit('transcription', {
-                            text: transcript,
-                            isFinal: isFinal,
-                            languageCode: data.results[0].languageCode || currentLanguage
-                        });
-
-                        // If it's a final result, detect language, translate and send
-                        if (isFinal) {
-                            try {
-                                const result = await detectAndTranslate(transcript);
-                                socket.emit('translation', {
-                                    original: transcript,
-                                    translated: result.translation,
-                                    fromLang: result.detectedLang,
-                                    toLang: result.targetLang
-                                });
-                            } catch (error) {
-                                socket.emit('error', 'Translation error: ' + error.message);
-                            }
-                        }
-                    }
-                })
-                .on('end', () => {
-                    console.log('Recognize stream ended');
-                    isStreamActive = false;
-                });
-
-            isStreamActive = true;
+            socket.isStreamActive = true;
+            socket.isEnding = false;
+            socket.recognizeStream = createRecognizeStream(socket);
             console.log('Successfully created recognize stream');
         } catch (error) {
             console.error('Error creating recognize stream:', error);
             socket.emit('error', 'Failed to start speech recognition: ' + error.message);
-            isStreamActive = false;
+            socket.isStreamActive = false;
         }
     });
 
     socket.on('audioData', (data) => {
         // Check if stream exists, is active, and is writable
-        if (recognizeStream && isStreamActive && !recognizeStream.destroyed && recognizeStream.writable) {
+        if (socket.recognizeStream && socket.isStreamActive && !socket.recognizeStream.destroyed && socket.recognizeStream.writable) {
             try {
                 // Convert the ArrayBuffer to Buffer
                 const buffer = Buffer.from(data);
-                recognizeStream.write(buffer);
+                socket.recognizeStream.write(buffer);
             } catch (error) {
                 console.error('Error writing to recognize stream:', error);
-                socket.emit('error', 'Error processing audio: ' + error.message);
-                isStreamActive = false;
+                if (!error.message.includes('Audio Timeout Error')) {
+                    socket.emit('error', 'Error processing audio: ' + error.message);
+                }
             }
         }
     });
 
     socket.on('endGoogleCloudStream', () => {
-        if (recognizeStream && isStreamActive) {
+        if (socket.recognizeStream && socket.isStreamActive) {
             try {
-                isStreamActive = false;  // Set this first to prevent any new writes
-                recognizeStream.end();
+                socket.isEnding = true;  // Prevent stream recreation
+                socket.isStreamActive = false;
+                socket.recognizeStream.end();
                 console.log('Successfully ended recognize stream');
             } catch (error) {
                 console.error('Error ending recognize stream:', error);
@@ -175,10 +208,11 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         console.log('Client disconnected');
-        if (recognizeStream && isStreamActive) {
+        if (socket.recognizeStream && socket.isStreamActive) {
             try {
-                isStreamActive = false;
-                recognizeStream.end();
+                socket.isEnding = true;  // Prevent stream recreation
+                socket.isStreamActive = false;
+                socket.recognizeStream.end();
             } catch (error) {
                 console.error('Error ending recognize stream on disconnect:', error);
             }

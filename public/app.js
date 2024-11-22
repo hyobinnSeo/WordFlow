@@ -14,6 +14,7 @@ let mediaRecorder;
 let audioContext;
 let audioInput;
 let processor;
+let mediaStream; // Added to store the media stream
 const bufferSize = 2048;
 let finalTranscript = '';
 let interimTranscript = '';
@@ -41,7 +42,7 @@ function autoScrollTextArea(textarea) {
 async function initAudioContext() {
     try {
         console.log('Requesting microphone access...');
-        const stream = await navigator.mediaDevices.getUserMedia({ 
+        mediaStream = await navigator.mediaDevices.getUserMedia({ 
             audio: {
                 channelCount: 1,
                 sampleRate: 16000,
@@ -57,7 +58,7 @@ async function initAudioContext() {
             latencyHint: 'interactive'
         });
         
-        audioInput = audioContext.createMediaStreamSource(stream);
+        audioInput = audioContext.createMediaStreamSource(mediaStream);
         processor = audioContext.createScriptProcessor(bufferSize, 1, 1);
 
         processor.onaudioprocess = (e) => {
@@ -115,6 +116,20 @@ recordButton.addEventListener('click', async () => {
             if (audioInput && processor) {
                 audioInput.disconnect(processor);
                 processor.disconnect(audioContext.destination);
+            }
+
+            // Stop all tracks in the media stream
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => {
+                    track.stop();
+                });
+                mediaStream = null;
+            }
+
+            // Reset audio context
+            if (audioContext) {
+                await audioContext.close();
+                audioContext = null;
             }
 
             socket.emit('endGoogleCloudStream');

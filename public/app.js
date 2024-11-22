@@ -27,6 +27,31 @@ let isKoreanToEnglish = false; // false means EN→KO, true means KO→EN
 // Debug logging
 console.log('Script loaded');
 
+// Function to play audio from base64 data
+async function playAudio(base64Audio) {
+    try {
+        // Convert base64 to ArrayBuffer
+        const binaryString = window.atob(base64Audio);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        // Create audio context and buffer
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const audioBuffer = await audioCtx.decodeAudioData(bytes.buffer);
+        
+        // Create and play audio source
+        const source = audioCtx.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioCtx.destination);
+        source.start(0);
+    } catch (error) {
+        console.error('Error playing audio:', error);
+    }
+}
+
 // Auto-scroll toggle functionality
 autoScrollButton.addEventListener('click', () => {
     isAutoScrollEnabled = !isAutoScrollEnabled;
@@ -249,6 +274,12 @@ socket.on('translation', (data) => {
         koreanText += (koreanText ? '\n\n' : '') + data.translated;
     }
     updateTextAreas();
+});
+
+// Handle TTS audio
+socket.on('tts-audio', (audioContent) => {
+    console.log('Received TTS audio');
+    playAudio(audioContent);
 });
 
 // Handle connection status

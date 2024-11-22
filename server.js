@@ -9,35 +9,74 @@ const io = require('socket.io')(http, {
 });
 const speech = require('@google-cloud/speech');
 const {Translate} = require('@google-cloud/translate').v2;
+const textToSpeech = require('@google-cloud/text-to-speech');
 const path = require('path');
 
 // Serve static files from public directory
 app.use(express.static('public'));
 
-// Create speech and translation clients with error handling
+// Create speech, translation, and TTS clients with error handling
 let client;
 let translate;
+let ttsClient;
 try {
-    // Set credentials for Speech-to-Text
-    process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow-442410-0481bfc9b57e.json');
-    client = new speech.SpeechClient();
+    // Set credentials path for all services
+    const keyPath = path.join(__dirname, 'keys', 'voiceflow-442410-e357e7554da8.json');
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = keyPath;
     
-    // Set credentials for Translation
-    process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow-442410-bbc3162e9dd5.json');
+    // Initialize all clients
+    client = new speech.SpeechClient();
     translate = new Translate();
+    ttsClient = new textToSpeech.TextToSpeechClient();
     
     console.log('Successfully initialized Google Cloud clients');
 } catch (error) {
     console.error('Error initializing Google Cloud clients:', error);
 }
 
+// Function to synthesize speech
+async function synthesizeSpeech(text, targetLang) {
+    try {
+        let voiceConfig;
+        if (targetLang === 'en') {
+            voiceConfig = {
+                name: 'en-US-Journey-F',
+                languageCode: 'en-US',
+                model: 'Journey'
+            };
+        } else if (targetLang === 'ko') {
+            voiceConfig = {
+                name: 'ko-KR-Neural2-C',
+                languageCode: 'ko-KR',
+                model: 'Neural2'
+            };
+        }
+
+        const request = {
+            input: { text: text },
+            voice: voiceConfig,
+            audioConfig: {
+                audioEncoding: 'MP3'
+            },
+        };
+
+        const [response] = await ttsClient.synthesizeSpeech(request);
+        return response.audioContent;
+    } catch (error) {
+        console.error('TTS error:', error);
+        throw error;
+    }
+}
+
 // Translation function with direction support
 async function translateText(text, isKoreanToEnglish) {
     try {
-        // Reset credentials for Translation before translating
-        process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow-442410-bbc3162e9dd5.json');
         const [translation] = await translate.translate(text, isKoreanToEnglish ? 'en' : 'ko');
-        return translation;
+        return {
+            translation,
+            fromLang: isKoreanToEnglish ? 'ko' : 'en',
+            toLang: isKoreanToEnglish ? 'en' : 'ko'
+        };
     } catch (error) {
         console.error('Translation error:', error);
         throw error;
@@ -75,16 +114,13 @@ io.on('connection', (socket) => {
 
     socket.on('startGoogleCloudStream', async (data) => {
         try {
-            // Set credentials for Speech-to-Text before starting stream
-            process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow-442410-0481bfc9b57e.json');
-            
             console.log('Starting new recognize stream...');
             
             const request = {
                 config: {
                     encoding: 'LINEAR16',
                     sampleRateHertz: 16000,
-                    languageCode: isKoreanToEnglish ? 'ko-KR' : 'en-US', // Default to en-US for EN→KO
+                    languageCode: isKoreanToEnglish ? 'ko-KR' : 'en-US',
                     enableAutomaticPunctuation: true,
                     model: 'default',
                     useEnhanced: true,
@@ -119,11 +155,22 @@ io.on('connection', (socket) => {
                         // If it's a final result, translate and send
                         if (isFinal) {
                             try {
-                                const translatedText = await translateText(transcript, isKoreanToEnglish);
+                                const result = await translateText(transcript, isKoreanToEnglish);
                                 socket.emit('translation', {
                                     original: transcript,
-                                    translated: translatedText
+                                    translated: result.translation,
+                                    fromLang: result.fromLang,
+                                    toLang: result.toLang
                                 });
+
+                                // Generate speech for the translation
+                                try {
+                                    const audioContent = await synthesizeSpeech(result.translation, result.toLang);
+                                    socket.emit('tts-audio', audioContent.toString('base64'));
+                                } catch (error) {
+                                    console.error('TTS error:', error);
+                                    socket.emit('error', 'TTS error: ' + error.message);
+                                }
                             } catch (error) {
                                 socket.emit('error', 'Translation error: ' + error.message);
                             }

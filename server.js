@@ -46,7 +46,7 @@ async function synthesizeSpeech(text, targetLang) {
             };
         } else if (targetLang === 'ko') {
             voiceConfig = {
-                name: 'ko-KR-Neural2-A',
+                name: 'ko-KR-Neural2-C',
                 languageCode: 'ko-KR',
                 model: 'Neural2'
             };
@@ -110,8 +110,8 @@ function createRecognizeStream(socket) {
         config: {
             encoding: 'LINEAR16',
             sampleRateHertz: 16000,
-            languageCode: 'ko-KR',  // Set Korean as primary
-            alternativeLanguageCodes: ['en-US'],  // Add English as alternative
+            languageCode: 'en-US',  // Set English as primary for better language switching
+            alternativeLanguageCodes: ['ko-KR'],  // Add Korean as alternative
             enableAutomaticPunctuation: true,
             model: 'default',
             useEnhanced: true,

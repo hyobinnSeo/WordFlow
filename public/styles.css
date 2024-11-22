@@ -101,12 +101,12 @@ body {
   }
 }
 
-#autoScrollButton {
+#autoScrollButton, #translationModeButton {
   background-color: var(--navy-500);
   color: white;
 }
 
-#autoScrollButton:hover {
+#autoScrollButton:hover, #translationModeButton:hover {
   background-color: var(--navy-600);
   transform: translateY(-1px);
 }

@@ -7,6 +7,7 @@ const socket = io({
 
 const recordButton = document.getElementById('recordButton');
 const autoScrollButton = document.getElementById('autoScrollButton');
+const translationModeButton = document.getElementById('translationModeButton');
 const transcriptionArea = document.getElementById('transcription');
 const translationArea = document.getElementById('secondary-text');
 
@@ -14,13 +15,14 @@ let mediaRecorder;
 let audioContext;
 let audioInput;
 let processor;
-let mediaStream; // Added to store the media stream
+let mediaStream;
 const bufferSize = 2048;
 let finalTranscript = '';
 let interimTranscript = '';
 let translatedText = '';
 let isAutoScrollEnabled = true;
 let isRecording = false;
+let isKoreanToEnglish = true;
 
 // Debug logging
 console.log('Script loaded');
@@ -28,7 +30,64 @@ console.log('Script loaded');
 // Auto-scroll toggle functionality
 autoScrollButton.addEventListener('click', () => {
     isAutoScrollEnabled = !isAutoScrollEnabled;
-    autoScrollButton.textContent = `Auto-scroll: ${isAutoScrollEnabled ? 'ON' : 'OFF'}`;
+    autoScrollButton.textContent = `⟳ Auto-scroll: ${isAutoScrollEnabled ? 'ON' : 'OFF'}`;
+});
+
+// Translation mode toggle functionality
+translationModeButton.addEventListener('click', async () => {
+    isKoreanToEnglish = !isKoreanToEnglish;
+    translationModeButton.textContent = isKoreanToEnglish ? '🔄 KO → EN' : '🔄 EN → KO';
+    
+    // Notify server about translation direction change
+    socket.emit('setTranslationDirection', { isKoreanToEnglish });
+
+    // If currently recording, restart the stream with new language
+    if (isRecording) {
+        // Temporarily store recording state
+        const wasRecording = isRecording;
+        
+        // Stop current stream
+        if (audioInput && processor) {
+            audioInput.disconnect(processor);
+            processor.disconnect(audioContext.destination);
+        }
+
+        // Stop all tracks in the media stream
+        if (mediaStream) {
+            mediaStream.getTracks().forEach(track => {
+                track.stop();
+            });
+            mediaStream = null;
+        }
+
+        // Reset audio context
+        if (audioContext) {
+            await audioContext.close();
+            audioContext = null;
+        }
+
+        socket.emit('endGoogleCloudStream');
+        
+        // Small delay to ensure clean transition
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Restart recording if it was active
+        if (wasRecording) {
+            try {
+                await initAudioContext();
+                socket.emit('startGoogleCloudStream', { isKoreanToEnglish });
+                isRecording = true;
+                recordButton.textContent = '⏹ Stop Recording';
+                recordButton.classList.add('recording');
+            } catch (error) {
+                console.error('Error restarting recording:', error);
+                alert('Error restarting recording. Please try again.');
+                isRecording = false;
+                recordButton.textContent = '⏺ Start Recording';
+                recordButton.classList.remove('recording');
+            }
+        }
+    }
 });
 
 // Function to handle auto-scrolling
@@ -72,8 +131,8 @@ async function initAudioContext() {
                 int16Data[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
             }
             
-            // Send the buffer
-            socket.emit('audioData', int16Data.buffer);
+            // Send the buffer with translation direction
+            socket.emit('audioData', int16Data.buffer, { isKoreanToEnglish });
         };
 
         audioInput.connect(processor);
@@ -100,7 +159,7 @@ recordButton.addEventListener('click', async () => {
             audioInput.connect(processor);
             processor.connect(audioContext.destination);
 
-            socket.emit('startGoogleCloudStream');
+            socket.emit('startGoogleCloudStream', { isKoreanToEnglish });
             isRecording = true;
             recordButton.textContent = '⏹ Stop Recording';
             recordButton.classList.add('recording');
@@ -190,6 +249,8 @@ socket.on('translation', (data) => {
 socket.on('connect', () => {
     console.log('Connected to server');
     recordButton.disabled = false;
+    // Send initial translation direction on connect
+    socket.emit('setTranslationDirection', { isKoreanToEnglish });
 });
 
 socket.on('disconnect', () => {

@@ -31,12 +31,12 @@ try {
     console.error('Error initializing Google Cloud clients:', error);
 }
 
-// Translation function
-async function translateText(text) {
+// Translation function with direction support
+async function translateText(text, isKoreanToEnglish) {
     try {
         // Reset credentials for Translation before translating
         process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow-442410-bbc3162e9dd5.json');
-        const [translation] = await translate.translate(text, 'ko');
+        const [translation] = await translate.translate(text, isKoreanToEnglish ? 'en' : 'ko');
         return translation;
     } catch (error) {
         console.error('Translation error:', error);
@@ -55,8 +55,25 @@ io.on('connection', (socket) => {
     
     let recognizeStream = null;
     let isStreamActive = false;
+    let isKoreanToEnglish = true; // Default translation direction
 
-    socket.on('startGoogleCloudStream', async () => {
+    // Handle translation direction changes
+    socket.on('setTranslationDirection', (data) => {
+        isKoreanToEnglish = data.isKoreanToEnglish;
+        console.log(`Translation direction set to: ${isKoreanToEnglish ? 'Korean → English' : 'English → Korean'}`);
+        
+        // If there's an active stream, end it so it can be recreated with new language
+        if (recognizeStream && isStreamActive) {
+            try {
+                isStreamActive = false;
+                recognizeStream.end();
+            } catch (error) {
+                console.error('Error ending recognize stream on direction change:', error);
+            }
+        }
+    });
+
+    socket.on('startGoogleCloudStream', async (data) => {
         try {
             // Set credentials for Speech-to-Text before starting stream
             process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow-442410-0481bfc9b57e.json');
@@ -67,7 +84,7 @@ io.on('connection', (socket) => {
                 config: {
                     encoding: 'LINEAR16',
                     sampleRateHertz: 16000,
-                    languageCode: 'en-US',
+                    languageCode: isKoreanToEnglish ? 'ko-KR' : 'en-US',
                     enableAutomaticPunctuation: true,
                     model: 'default',
                     useEnhanced: true,
@@ -102,7 +119,7 @@ io.on('connection', (socket) => {
                         // If it's a final result, translate and send
                         if (isFinal) {
                             try {
-                                const translatedText = await translateText(transcript);
+                                const translatedText = await translateText(transcript, isKoreanToEnglish);
                                 socket.emit('translation', {
                                     original: transcript,
                                     translated: translatedText

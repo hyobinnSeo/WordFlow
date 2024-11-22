@@ -31,13 +31,26 @@ try {
     console.error('Error initializing Google Cloud clients:', error);
 }
 
-// Translation function
-async function translateText(text) {
+// Detect language and translate text
+async function detectAndTranslate(text) {
     try {
-        // Reset credentials for Translation before translating
         process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow-442410-bbc3162e9dd5.json');
-        const [translation] = await translate.translate(text, 'ko');
-        return translation;
+        
+        // Detect the language
+        const [detection] = await translate.detect(text);
+        console.log('Detected language:', detection.language);
+        
+        // Determine target language based on detected language
+        const targetLang = detection.language === 'ko' ? 'en' : 'ko';
+        
+        // Translate the text
+        const [translation] = await translate.translate(text, targetLang);
+        
+        return {
+            detectedLang: detection.language,
+            targetLang,
+            translation
+        };
     } catch (error) {
         console.error('Translation error:', error);
         throw error;
@@ -55,6 +68,7 @@ io.on('connection', (socket) => {
     
     let recognizeStream = null;
     let isStreamActive = false;
+    let currentLanguage = 'en-US'; // Default language
 
     socket.on('startGoogleCloudStream', async () => {
         try {
@@ -68,6 +82,7 @@ io.on('connection', (socket) => {
                     encoding: 'LINEAR16',
                     sampleRateHertz: 16000,
                     languageCode: 'en-US',
+                    alternativeLanguageCodes: ['ko-KR'], // Add Korean as alternative
                     enableAutomaticPunctuation: true,
                     model: 'default',
                     useEnhanced: true,
@@ -96,16 +111,19 @@ io.on('connection', (socket) => {
                         // Send original transcription
                         socket.emit('transcription', {
                             text: transcript,
-                            isFinal: isFinal
+                            isFinal: isFinal,
+                            languageCode: data.results[0].languageCode || currentLanguage
                         });
 
-                        // If it's a final result, translate and send
+                        // If it's a final result, detect language, translate and send
                         if (isFinal) {
                             try {
-                                const translatedText = await translateText(transcript);
+                                const result = await detectAndTranslate(transcript);
                                 socket.emit('translation', {
                                     original: transcript,
-                                    translated: translatedText
+                                    translated: result.translation,
+                                    fromLang: result.detectedLang,
+                                    toLang: result.targetLang
                                 });
                             } catch (error) {
                                 socket.emit('error', 'Translation error: ' + error.message);

@@ -8,19 +8,28 @@ const socket = io({
 const recordButton = document.getElementById('recordButton');
 const autoScrollButton = document.getElementById('autoScrollButton');
 const transcriptionArea = document.getElementById('transcription');
-const translationArea = document.getElementById('secondary-text');
+const translationArea = document.getElementById('translation');
+const originalLangTag = document.getElementById('originalLang');
+const targetLangTag = document.getElementById('targetLang');
 
 let mediaRecorder;
 let audioContext;
 let audioInput;
 let processor;
-let mediaStream; // Added to store the media stream
+let mediaStream;
 const bufferSize = 2048;
 let finalTranscript = '';
 let interimTranscript = '';
-let translatedText = '';
 let isAutoScrollEnabled = true;
 let isRecording = false;
+
+// Language codes to full names mapping
+const languageNames = {
+    'en': 'English',
+    'ko': 'Korean',
+    'en-US': 'English',
+    'ko-KR': 'Korean'
+};
 
 // Debug logging
 console.log('Script loaded');
@@ -28,7 +37,7 @@ console.log('Script loaded');
 // Auto-scroll toggle functionality
 autoScrollButton.addEventListener('click', () => {
     isAutoScrollEnabled = !isAutoScrollEnabled;
-    autoScrollButton.textContent = `Auto-scroll: ${isAutoScrollEnabled ? 'ON' : 'OFF'}`;
+    autoScrollButton.textContent = `⟳ Auto-scroll: ${isAutoScrollEnabled ? 'ON' : 'OFF'}`;
 });
 
 // Function to handle auto-scrolling
@@ -100,6 +109,14 @@ recordButton.addEventListener('click', async () => {
             audioInput.connect(processor);
             processor.connect(audioContext.destination);
 
+            // Reset transcripts and translations
+            finalTranscript = '';
+            interimTranscript = '';
+            transcriptionArea.value = '';
+            translationArea.value = '';
+            originalLangTag.textContent = 'Detecting...';
+            targetLangTag.textContent = 'Waiting...';
+
             socket.emit('startGoogleCloudStream');
             isRecording = true;
             recordButton.textContent = '⏹ Stop Recording';
@@ -157,23 +174,21 @@ function updateTranscriptionArea() {
     autoScrollTextArea(transcriptionArea);
 }
 
-// Update the translation area with translated text
-function updateTranslationArea() {
-    translationArea.value = translatedText;
-    autoScrollTextArea(translationArea);
-}
-
 // Handle transcription updates
 socket.on('transcription', (data) => {
     console.log('Received transcription:', data);
     
     if (data.isFinal) {
-        // Add to final transcript with two new lines between sentences
         finalTranscript += (finalTranscript ? '\n\n' : '') + data.text;
         interimTranscript = '';
     } else {
-        // Update interim transcript
         interimTranscript = data.text;
+    }
+    
+    // Update language tag if provided
+    if (data.languageCode) {
+        const langName = languageNames[data.languageCode] || data.languageCode;
+        originalLangTag.textContent = langName;
     }
     
     updateTranscriptionArea();
@@ -182,8 +197,16 @@ socket.on('transcription', (data) => {
 // Handle translation updates
 socket.on('translation', (data) => {
     console.log('Received translation:', data);
-    translatedText += (translatedText ? '\n\n' : '') + data.translated;
-    updateTranslationArea();
+    
+    // Update translation text
+    translationArea.value += (translationArea.value ? '\n\n' : '') + data.translated;
+    autoScrollTextArea(translationArea);
+    
+    // Update language tags
+    if (data.fromLang && data.toLang) {
+        originalLangTag.textContent = languageNames[data.fromLang] || data.fromLang;
+        targetLangTag.textContent = languageNames[data.toLang] || data.toLang;
+    }
 });
 
 // Handle connection status

@@ -7,12 +7,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <header class="header">
         <div class="header-content">
             <h1 class="header-title">Voice Flow</h1>
+            <p class="header-subtitle">Speak in English or Korean - Automatic Translation</p>
         </div>
     </header>
 
@@ -29,9 +31,10 @@
 
             <div class="text-areas-container">
                 <div class="text-container">
-                    <label for="transcription" class="text-sm font-medium text-gray-700">
-                        Speech Transcription
-                    </label>
+                    <div class="text-header">
+                        <label for="transcription" class="text-label">Original Speech</label>
+                        <span id="originalLang" class="language-tag">Detected Language</span>
+                    </div>
                     <textarea 
                         id="transcription" 
                         readonly 
@@ -41,13 +44,15 @@
                 </div>
 
                 <div class="text-container">
-                    <label for="secondary-text" class="text-sm font-medium text-gray-700">
-                        Notes
-                    </label>
+                    <div class="text-header">
+                        <label for="translation" class="text-label">Translation</label>
+                        <span id="targetLang" class="language-tag">Target Language</span>
+                    </div>
                     <textarea 
-                        id="secondary-text" 
-                        placeholder="Add your notes here..."
-                        aria-label="Additional notes area"
+                        id="translation" 
+                        readonly
+                        placeholder="Translation will appear here..."
+                        aria-label="Translation output"
                     ></textarea>
                 </div>
             </div>

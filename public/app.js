@@ -18,6 +18,7 @@ let mediaStream; // Added to store the media stream
 const bufferSize = 2048;
 let finalTranscript = '';
 let interimTranscript = '';
+let translations = new Map(); // Store translations for each sentence
 let isAutoScrollEnabled = true;
 let isRecording = false;
 
@@ -35,7 +36,7 @@ async function copyToClipboard(text) {
     }
 }
 
-// Copy button event listeners
+// Copy button event listener
 copyTranscriptionButton.addEventListener('click', async () => {
     const success = await copyToClipboard(transcriptionArea.value);
     const originalText = copyTranscriptionButton.textContent;
@@ -177,9 +178,31 @@ recordButton.addEventListener('click', async () => {
     }
 });
 
-// Update the transcription area with current transcripts
+// Update the transcription area with current transcripts and translations
 function updateTranscriptionArea() {
-    transcriptionArea.value = finalTranscript + (interimTranscript ? ' ' + interimTranscript : '');
+    let displayText = '';
+    const sentences = finalTranscript.split('\n\n');
+    
+    // Add each sentence and its translation
+    sentences.forEach((sentence, index) => {
+        if (sentence) {
+            displayText += sentence;
+            const translation = translations.get(sentence);
+            if (translation) {
+                displayText += '\n→ ' + translation;
+            }
+            if (index < sentences.length - 1) {
+                displayText += '\n\n';
+            }
+        }
+    });
+    
+    // Add interim transcript if exists
+    if (interimTranscript) {
+        displayText += (displayText ? '\n\n' : '') + interimTranscript;
+    }
+    
+    transcriptionArea.value = displayText;
     autoScrollTextArea(transcriptionArea);
 }
 
@@ -196,6 +219,13 @@ socket.on('transcription', (data) => {
         interimTranscript = data.text;
     }
     
+    updateTranscriptionArea();
+});
+
+// Handle translation updates
+socket.on('translation', (data) => {
+    console.log('Received translation:', data);
+    translations.set(data.original, data.translated);
     updateTranscriptionArea();
 });
 

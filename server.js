@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
@@ -9,20 +10,61 @@ const io = require('socket.io')(http, {
 });
 const speech = require('@google-cloud/speech');
 const path = require('path');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 // Serve static files from public directory
 app.use(express.static('public'));
 
-// Create speech client with error handling
+// Create speech client and Gemini API client
 let client;
+let genAI;
 try {
     // Set credentials using single API key file
     process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow.json');
     client = new speech.SpeechClient();
     
-    console.log('Successfully initialized Google Cloud Speech client');
+    // Initialize Gemini API with the API key
+    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+    if (!GEMINI_API_KEY || GEMINI_API_KEY === 'your_gemini_api_key_here') {
+        throw new Error('Please set your Gemini API key in the .env file');
+    }
+    genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+    
+    console.log('Successfully initialized Google Cloud Speech and Gemini API clients');
 } catch (error) {
-    console.error('Error initializing Google Cloud Speech client:', error);
+    console.error('Error initializing clients:', error);
+}
+
+// Translation function using Gemini API
+async function translateText(text) {
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        
+        // Add delay between requests to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const prompt = `Translate the following English text to Korean. Only provide the translation, no explanations:
+        "${text}"`;
+        
+        try {
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            const translation = response.text().trim();
+            return translation;
+        } catch (error) {
+            if (error.message.includes('429') || error.message.includes('Too Many Requests')) {
+                // If rate limited, wait longer and retry once
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                const retryResult = await model.generateContent(prompt);
+                const retryResponse = await retryResult.response;
+                return retryResponse.text().trim();
+            }
+            throw error;
+        }
+    } catch (error) {
+        console.error('Translation error:', error);
+        throw error;
+    }
 }
 
 // Basic route for testing
@@ -88,6 +130,18 @@ io.on('connection', (socket) => {
                         text: transcript,
                         isFinal: isFinal
                     });
+
+                    if (isFinal) {
+                        try {
+                            const translatedText = await translateText(transcript);
+                            socket.emit('translation', {
+                                original: transcript,
+                                translated: translatedText
+                            });
+                        } catch (error) {
+                            socket.emit('error', 'Translation error: ' + error.message);
+                        }
+                    }
                 }
             })
             .on('end', () => {
@@ -129,20 +183,6 @@ io.on('connection', (socket) => {
             // Set up total duration limit
             clearTimeout(totalDurationTimeout);
             totalDurationTimeout = setTimeout(() => {
-                stopRecording('Recording limit of 2 hours reached');
-            }, TOTAL_DURATION_LIMIT);
-
-            // Emit time remaining updates every minute
-            let timeRemaining = TOTAL_DURATION_LIMIT;
-            const updateInterval = setInterval(() => {
-                if (!isStreamActive) {
-                    clearInterval(updateInterval);
-                    return;
-                }
-                timeRemaining -= 60000; // Subtract one minute
-                const minutesRemaining = Math.floor(timeRemaining / 60000);
-                if (minutesRemaining <= 5) {
-                    socket.emit('timeRemaining', { minutes: minutesRemaining });
                 }
             }, 60000);
 

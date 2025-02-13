@@ -25,6 +25,27 @@
                 <button id="autoScrollButton" class="control-button">
                     ⟳ Auto-scroll: ON
                 </button>
+                <button id="settingsButton" class="control-button">
+                    ⚙️ Settings
+                </button>
+            </div>
+
+            <!-- Settings Popup -->
+            <div id="settingsPopup" class="settings-popup hidden">
+                <div class="settings-content">
+                    <h2>Settings</h2>
+                    <div class="setting-item">
+                        <label for="translationService">Translation Service:</label>
+                        <select id="translationService">
+                            <option value="google">Google Cloud Translation</option>
+                            <option value="gemini">Gemini AI</option>
+                        </select>
+                    </div>
+                    <div class="settings-buttons">
+                        <button id="saveSettings" class="control-button">Save</button>
+                        <button id="closeSettings" class="control-button">Cancel</button>
+                    </div>
+                </div>
             </div>
 
             <div class="text-areas-container">

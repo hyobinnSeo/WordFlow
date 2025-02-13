@@ -11,17 +11,20 @@ const io = require('socket.io')(http, {
 const speech = require('@google-cloud/speech');
 const path = require('path');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { Translate } = require('@google-cloud/translate').v2;
 
 // Serve static files from public directory
 app.use(express.static('public'));
 
-// Create speech client and Gemini API client
+// Create API clients
 let client;
 let genAI;
+let translate;
 try {
     // Set credentials using single API key file
     process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow.json');
     client = new speech.SpeechClient();
+    translate = new Translate();
     
     // Initialize Gemini API with the API key
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -30,13 +33,24 @@ try {
     }
     genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     
-    console.log('Successfully initialized Google Cloud Speech and Gemini API clients');
+    console.log('Successfully initialized API clients');
 } catch (error) {
     console.error('Error initializing clients:', error);
 }
 
+// Translation function using Google Cloud Translation API
+async function translateWithGoogle(text) {
+    try {
+        const [translation] = await translate.translate(text, 'ko');
+        return translation;
+    } catch (error) {
+        console.error('Google Translation error:', error);
+        throw error;
+    }
+}
+
 // Translation function using Gemini API
-async function translateText(text) {
+async function translateWithGemini(text) {
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-pro" });
         
@@ -62,7 +76,7 @@ async function translateText(text) {
             throw error;
         }
     } catch (error) {
-        console.error('Translation error:', error);
+        console.error('Gemini Translation error:', error);
         throw error;
     }
 }
@@ -130,18 +144,6 @@ io.on('connection', (socket) => {
                         text: transcript,
                         isFinal: isFinal
                     });
-
-                    if (isFinal) {
-                        try {
-                            const translatedText = await translateText(transcript);
-                            socket.emit('translation', {
-                                original: transcript,
-                                translated: translatedText
-                            });
-                        } catch (error) {
-                            socket.emit('error', 'Translation error: ' + error.message);
-                        }
-                    }
                 }
             })
             .on('end', () => {
@@ -174,6 +176,22 @@ io.on('connection', (socket) => {
         }
     };
 
+    // Handle translation requests
+    socket.on('requestTranslation', async (data) => {
+        try {
+            const translatedText = data.service === 'google' 
+                ? await translateWithGoogle(data.text)
+                : await translateWithGemini(data.text);
+            
+            socket.emit('translation', {
+                original: data.text,
+                translated: translatedText
+            });
+        } catch (error) {
+            socket.emit('error', 'Translation error: ' + error.message);
+        }
+    });
+
     socket.on('startGoogleCloudStream', async () => {
         try {
             isStreamActive = true;
@@ -183,8 +201,8 @@ io.on('connection', (socket) => {
             // Set up total duration limit
             clearTimeout(totalDurationTimeout);
             totalDurationTimeout = setTimeout(() => {
-                }
-            }, 60000);
+                stopRecording('Recording limit of 2 hours reached');
+            }, TOTAL_DURATION_LIMIT);
 
         } catch (error) {
             console.error('Error creating recognize stream:', error);

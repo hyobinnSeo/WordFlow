@@ -7,8 +7,39 @@ const socket = io({
 
 const recordButton = document.getElementById('recordButton');
 const autoScrollButton = document.getElementById('autoScrollButton');
+const settingsButton = document.getElementById('settingsButton');
+const settingsPopup = document.getElementById('settingsPopup');
+const translationService = document.getElementById('translationService');
+const saveSettings = document.getElementById('saveSettings');
+const closeSettings = document.getElementById('closeSettings');
 const transcriptionArea = document.getElementById('transcription');
 const copyTranscriptionButton = document.getElementById('copyTranscriptionButton');
+
+// Settings management
+let currentTranslationService = localStorage.getItem('translationService') || 'google';
+translationService.value = currentTranslationService;
+
+// Settings popup handlers
+settingsButton.addEventListener('click', () => {
+    settingsPopup.classList.remove('hidden');
+});
+
+closeSettings.addEventListener('click', () => {
+    settingsPopup.classList.add('hidden');
+});
+
+saveSettings.addEventListener('click', () => {
+    currentTranslationService = translationService.value;
+    localStorage.setItem('translationService', currentTranslationService);
+    settingsPopup.classList.add('hidden');
+});
+
+// Close settings when clicking outside
+settingsPopup.addEventListener('click', (e) => {
+    if (e.target === settingsPopup) {
+        settingsPopup.classList.add('hidden');
+    }
+});
 
 let mediaRecorder;
 let audioContext;
@@ -214,6 +245,12 @@ socket.on('transcription', (data) => {
         // Add to final transcript with two new lines between sentences
         finalTranscript += (finalTranscript ? '\n\n' : '') + data.text;
         interimTranscript = '';
+        
+        // Send translation service preference with the request
+        socket.emit('requestTranslation', {
+            text: data.text,
+            service: currentTranslationService
+        });
     } else {
         // Update interim transcript
         interimTranscript = data.text;

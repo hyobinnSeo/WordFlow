@@ -8,9 +8,7 @@ const socket = io({
 const recordButton = document.getElementById('recordButton');
 const autoScrollButton = document.getElementById('autoScrollButton');
 const transcriptionArea = document.getElementById('transcription');
-const translationArea = document.getElementById('translation');
 const copyTranscriptionButton = document.getElementById('copyTranscriptionButton');
-const copyTranslationButton = document.getElementById('copyTranslationButton');
 
 let mediaRecorder;
 let audioContext;
@@ -20,7 +18,6 @@ let mediaStream; // Added to store the media stream
 const bufferSize = 2048;
 let finalTranscript = '';
 let interimTranscript = '';
-let translatedText = '';
 let isAutoScrollEnabled = true;
 let isRecording = false;
 
@@ -46,16 +43,6 @@ copyTranscriptionButton.addEventListener('click', async () => {
     copyTranscriptionButton.textContent = success ? '✓ Copied!' : '❌ Failed to copy';
     setTimeout(() => {
         copyTranscriptionButton.textContent = originalText;
-    }, 2000);
-});
-
-copyTranslationButton.addEventListener('click', async () => {
-    const success = await copyToClipboard(translationArea.value);
-    const originalText = copyTranslationButton.textContent;
-    
-    copyTranslationButton.textContent = success ? '✓ Copied!' : '❌ Failed to copy';
-    setTimeout(() => {
-        copyTranslationButton.textContent = originalText;
     }, 2000);
 });
 
@@ -196,12 +183,6 @@ function updateTranscriptionArea() {
     autoScrollTextArea(transcriptionArea);
 }
 
-// Update the translation area with translated text
-function updateTranslationArea() {
-    translationArea.value = translatedText;
-    autoScrollTextArea(translationArea);
-}
-
 // Handle transcription updates
 socket.on('transcription', (data) => {
     console.log('Received transcription:', data);
@@ -216,13 +197,6 @@ socket.on('transcription', (data) => {
     }
     
     updateTranscriptionArea();
-});
-
-// Handle translation updates
-socket.on('translation', (data) => {
-    console.log('Received translation:', data);
-    translatedText += (translatedText ? '\n\n' : '') + data.translated;
-    updateTranslationArea();
 });
 
 // Handle recording stopped event

@@ -8,37 +8,21 @@ const io = require('socket.io')(http, {
     }
 });
 const speech = require('@google-cloud/speech');
-const {Translate} = require('@google-cloud/translate').v2;
 const path = require('path');
 
 // Serve static files from public directory
 app.use(express.static('public'));
 
-// Create speech and translation clients with error handling
+// Create speech client with error handling
 let client;
-let translate;
 try {
     // Set credentials using single API key file
     process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow.json');
     client = new speech.SpeechClient();
-    translate = new Translate();
     
-    console.log('Successfully initialized Google Cloud clients');
+    console.log('Successfully initialized Google Cloud Speech client');
 } catch (error) {
-    console.error('Error initializing Google Cloud clients:', error);
-}
-
-// Translation function
-async function translateText(text) {
-    try {
-        // Using single API key file for translation
-        process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow.json');
-        const [translation] = await translate.translate(text, 'ko');
-        return translation;
-    } catch (error) {
-        console.error('Translation error:', error);
-        throw error;
-    }
+    console.error('Error initializing Google Cloud Speech client:', error);
 }
 
 // Basic route for testing
@@ -104,18 +88,6 @@ io.on('connection', (socket) => {
                         text: transcript,
                         isFinal: isFinal
                     });
-
-                    if (isFinal) {
-                        try {
-                            const translatedText = await translateText(transcript);
-                            socket.emit('translation', {
-                                original: transcript,
-                                translated: translatedText
-                            });
-                        } catch (error) {
-                            socket.emit('error', 'Translation error: ' + error.message);
-                        }
-                    }
                 }
             })
             .on('end', () => {

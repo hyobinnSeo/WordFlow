@@ -12,6 +12,7 @@ const speech = require('@google-cloud/speech');
 const path = require('path');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { Translate } = require('@google-cloud/translate').v2;
+const OpenAI = require('openai');
 
 // Serve static files from public directory
 app.use(express.static('public'));
@@ -20,6 +21,7 @@ app.use(express.static('public'));
 let client;
 let genAI;
 let translate;
+let openai;
 try {
     // Set credentials using single API key file
     process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow.json');
@@ -32,6 +34,13 @@ try {
         throw new Error('Please set your Gemini API key in the .env file');
     }
     genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+
+    // Initialize OpenAI API
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    if (!OPENAI_API_KEY || OPENAI_API_KEY === 'your_openai_api_key_here') {
+        throw new Error('Please set your OpenAI API key in the .env file');
+    }
+    openai = new OpenAI({ apiKey: OPENAI_API_KEY });
     
     console.log('Successfully initialized API clients');
 } catch (error) {
@@ -49,10 +58,10 @@ async function translateWithGoogle(text) {
     }
 }
 
-// Translation function using Gemini API
-async function translateWithGemini(text) {
+// Translation function using Gemini Flash API
+async function translateWithGeminiFlash(text) {
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-preview-02-05" });
         
         // Add delay between requests to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -77,6 +86,31 @@ async function translateWithGemini(text) {
         }
     } catch (error) {
         console.error('Gemini Translation error:', error);
+        throw error;
+    }
+}
+
+// Translation function using GPT-4o-mini
+async function translateWithGPT(text) {
+    try {
+        const response = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [
+                {
+                    role: "system",
+                    content: "You are a translator. Translate the given English text to Korean. Only provide the translation, no explanations."
+                },
+                {
+                    role: "user",
+                    content: text
+                }
+            ],
+            temperature: 0.3
+        });
+
+        return response.choices[0].message.content.trim();
+    } catch (error) {
+        console.error('GPT Translation error:', error);
         throw error;
     }
 }
@@ -179,9 +213,20 @@ io.on('connection', (socket) => {
     // Handle translation requests
     socket.on('requestTranslation', async (data) => {
         try {
-            const translatedText = data.service === 'google' 
-                ? await translateWithGoogle(data.text)
-                : await translateWithGemini(data.text);
+            let translatedText;
+            switch (data.service) {
+                case 'google':
+                    translatedText = await translateWithGoogle(data.text);
+                    break;
+                case 'gemini-flash':
+                    translatedText = await translateWithGeminiFlash(data.text);
+                    break;
+                case 'gpt-mini':
+                    translatedText = await translateWithGPT(data.text);
+                    break;
+                default:
+                    throw new Error('Invalid translation service selected');
+            }
             
             socket.emit('translation', {
                 original: data.text,

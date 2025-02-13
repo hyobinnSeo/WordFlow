@@ -18,12 +18,9 @@ app.use(express.static('public'));
 let client;
 let translate;
 try {
-    // Set credentials for Speech-to-Text
-    process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow-442410-0481bfc9b57e.json');
+    // Set credentials using single API key file
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow.json');
     client = new speech.SpeechClient();
-    
-    // Set credentials for Translation
-    process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow-442410-bbc3162e9dd5.json');
     translate = new Translate();
     
     console.log('Successfully initialized Google Cloud clients');
@@ -34,8 +31,8 @@ try {
 // Translation function
 async function translateText(text) {
     try {
-        // Reset credentials for Translation before translating
-        process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow-442410-bbc3162e9dd5.json');
+        // Using single API key file for translation
+        process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow.json');
         const [translation] = await translate.translate(text, 'ko');
         return translation;
     } catch (error) {
@@ -62,8 +59,8 @@ io.on('connection', (socket) => {
 
     // Function to create a new recognize stream
     const createRecognizeStream = () => {
-        // Set credentials for Speech-to-Text before starting stream
-        process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow-442410-0481bfc9b57e.json');
+        // Using single API key file for speech-to-text
+        process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow.json');
         
         console.log('Starting new recognize stream...');
         

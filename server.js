@@ -59,15 +59,41 @@ async function translateWithGoogle(text) {
 }
 
 // Translation function using Gemini Flash API
-async function translateWithGeminiFlash(text) {
+async function translateWithGeminiFlash(text, context = '') {
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-preview-02-05" });
         
         // Add delay between requests to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        const prompt = `Translate the following English text to Korean. Only provide the translation, no explanations:
-        "${text}"`;
+        const prompt = `[Instructions]
+
+You are a professional translator specializing in English to Korean translation. Your task is to translate the provided English text to Korean, focusing only on the given text.
+
+The input text may contain:
+Spelling errors or homophones
+Incorrectly split sentences
+Incorrectly merged sentences
+Run-on sentences or sentence fragments
+Missing or incorrect punctuation
+Grammatically incomplete fragments
+Ambiguous meanings
+
+- Always provide the direct translation first
+- If issues are detected, add:
+[Issue: Brief description of the potential problem]
+[Alternative: Your suggested alternative translation based on the context]
+- Provide only the Korean translation without any explanations or commentary.
+- Context is provided for reference only. Do not translate the context unless needed for an alternative translation.
+- If the alternative translation text is nearly identical to the original translation text, provide only the alternative translation.
+- If the target text is a sentence fragment due to incorrect splitting, use the context sentence in the alternative translation.
+- Maintain consistent style and tone throughout the translation.
+
+Context:
+${context.slice(0, 1000)}
+
+Text to be translated:
+"${text}"`;
         
         try {
             const result = await model.generateContent(prompt);
@@ -91,18 +117,42 @@ async function translateWithGeminiFlash(text) {
 }
 
 // Translation function using GPT-4o-mini
-async function translateWithGPT(text) {
+async function translateWithGPT(text, context = '') {
     try {
         const response = await openai.chat.completions.create({
             model: "gpt-4o-mini",
             messages: [
                 {
                     role: "system",
-                    content: "You are a translator. Translate the given English text to Korean. Only provide the translation, no explanations."
+                    content: `[Instructions]
+
+You are a professional translator specializing in English to Korean translation. Your task is to translate the provided English text to Korean, focusing only on the given text.
+
+The input text may contain:
+Spelling errors or homophones
+Incorrectly split sentences
+Incorrectly merged sentences
+Run-on sentences or sentence fragments
+Missing or incorrect punctuation
+Grammatically incomplete fragments
+Ambiguous meanings
+
+- Provide the direct translation.
+- If issues are detected, use this format:
+[Issue: Brief description of the potential problem]
+[Alternative: Your suggested alternative translation based on the context]
+- Provide only the Korean translation without any explanations or commentary.
+- Context is provided for reference only. Do not translate the context unless needed for an alternative translation.
+- However, if the fragment appears to be part of a previous sentence, provide the completed translation text incorporating context from previous text.
+- Maintain consistent style and tone throughout the translation.`
                 },
                 {
                     role: "user",
-                    content: text
+                    content: `Context:
+${context.slice(0, 1000)}
+
+Text to be translated:
+${text}`
                 }
             ],
             temperature: 0.3
@@ -219,10 +269,10 @@ io.on('connection', (socket) => {
                     translatedText = await translateWithGoogle(data.text);
                     break;
                 case 'gemini-flash':
-                    translatedText = await translateWithGeminiFlash(data.text);
+                    translatedText = await translateWithGeminiFlash(data.text, data.context || '');
                     break;
                 case 'gpt-mini':
-                    translatedText = await translateWithGPT(data.text);
+                    translatedText = await translateWithGPT(data.text, data.context || '');
                     break;
                 default:
                     throw new Error('Invalid translation service selected');

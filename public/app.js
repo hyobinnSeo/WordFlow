@@ -52,6 +52,8 @@ let interimTranscript = '';
 let translations = new Map(); // Store translations for each sentence
 let isAutoScrollEnabled = true;
 let isRecording = false;
+let previousSentences = []; // Store previous sentences for context
+const MAX_CONTEXT_LENGTH = 1000; // Maximum context length in characters
 
 // Debug logging
 console.log('Script loaded');
@@ -246,10 +248,24 @@ socket.on('transcription', (data) => {
         finalTranscript += (finalTranscript ? '\n\n' : '') + data.text;
         interimTranscript = '';
         
+        // Add the new sentence to previous sentences
+        previousSentences.push(data.text);
+        
+        // Keep only enough previous sentences to stay under MAX_CONTEXT_LENGTH
+        let context = '';
+        for (let i = previousSentences.length - 1; i >= 0; i--) {
+            const newContext = previousSentences[i] + '\n' + context;
+            if (newContext.length > MAX_CONTEXT_LENGTH) {
+                break;
+            }
+            context = newContext;
+        }
+        
         // Send translation service preference with the request
         socket.emit('requestTranslation', {
             text: data.text,
-            service: currentTranslationService
+            service: currentTranslationService,
+            context: context.trim()
         });
     } else {
         // Update interim transcript

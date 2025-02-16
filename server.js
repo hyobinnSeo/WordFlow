@@ -72,22 +72,18 @@ You are a professional translator specializing in English to Korean translation.
 
 The input text may contain:
 Spelling errors or homophones
-Incorrectly split sentences
-Incorrectly merged sentences
-Run-on sentences or sentence fragments
-Missing or incorrect punctuation
 Grammatically incomplete fragments
 Ambiguous meanings
 
-- Always provide the direct translation first
-- If issues are detected, add:
-[Issue: Brief description of the potential problem]
-[Alternative: Your suggested alternative translation based on the context]
-- Provide only the Korean translation without any explanations or commentary.
-- Context is provided for reference only. Do not translate the context unless needed for an alternative translation.
-- If the alternative translation text is nearly identical to the original translation text, provide only the alternative translation.
-- If the target text is a sentence fragment due to incorrect splitting, use the context sentence in the alternative translation.
-- Maintain consistent style and tone throughout the translation.
+- If there are no issues, please provide only the Korean translation without any explanations or commentary.
+- If issues are detected, use this format:
+{Direct Korean translation}
+[Issue: {Brief description of the potential problem in Korean}]
+[Alternative: {Your suggested alternative Korean translation based on the context}]
+The most common issue: If the sentence fragment appears to be part of a previous sentence:
+1. Keep track of all fragments to reconstruct the complete sentence.
+2. When the final fragment is detected, provide: A complete, natural translation of the entire reconstructed sentence.
+NOTE: Provide a natural, conversational Korean translation.
 
 Context:
 ${context.slice(0, 1000)}
@@ -128,26 +124,20 @@ async function translateWithGPT(text, context = '') {
 
 You are a professional translator specializing in English to Korean translation. Your task is to translate the provided English text to Korean, focusing only on the given text.
 
-- Provide the direct translation.
-- If issues are detected, use this format:
-[Issue: Brief description of the potential problem]
-[Alternative: Your suggested alternative translation based on the context]
 The input text may contain:
 Spelling errors or homophones
-Incorrectly split sentences
-Incorrectly merged sentences
-Missing or incorrect punctuation
 Grammatically incomplete fragments
 Ambiguous meanings
 
-Example:
-Context: In the long history of the world. Only a few Generations. Have been granted the role.
-Input: Of Defending freedom.
-Output: 자유를 수호하는 역할.
-[Issue: Fragment due to incorrect splitting]
-[Alternative: 세계의 긴 역사 속에서, 오직 몇 세대만이 자유를 수호하는 역할을 부여받았습니다.]
-
-- Maintain consistent style and tone throughout the translation.`
+- If there are no issues, please provide only the Korean translation without any explanations or commentary.
+- If issues are detected, use this format:
+{Direct Korean translation}
+[Issue: {Brief description of the potential problem in Korean}]
+[Alternative: {Your suggested alternative Korean translation based on the context}]
+The most common issue: If the sentence fragment appears to be part of a previous sentence:
+1. Keep track of all fragments to reconstruct the complete sentence.
+2. When the final fragment is detected, provide: A complete, natural translation of the entire reconstructed sentence.
+NOTE: Provide a natural, conversational Korean translation.`
                 },
                 {
                     role: "user",

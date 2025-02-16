@@ -19,6 +19,100 @@ const copyTranscriptionButton = document.getElementById('copyTranscriptionButton
 let currentTranslationService = localStorage.getItem('translationService') || 'google';
 translationService.value = currentTranslationService;
 
+// API key elements
+const geminiApiKey = document.getElementById('geminiApiKey');
+const openaiApiKey = document.getElementById('openaiApiKey');
+const gcpProjectId = document.getElementById('gcpProjectId');
+const gcpClientEmail = document.getElementById('gcpClientEmail');
+const gcpPrivateKey = document.getElementById('gcpPrivateKey');
+const verifyButtons = document.querySelectorAll('.verify-button');
+
+// Load saved API keys
+geminiApiKey.value = localStorage.getItem('geminiApiKey') || '';
+openaiApiKey.value = localStorage.getItem('openaiApiKey') || '';
+gcpProjectId.value = localStorage.getItem('gcpProjectId') || '';
+gcpClientEmail.value = localStorage.getItem('gcpClientEmail') || '';
+gcpPrivateKey.value = localStorage.getItem('gcpPrivateKey') || '';
+
+// API key verification
+async function verifyApiKey(service, key) {
+    try {
+        const response = await fetch('/verify-api-key', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ service, key }),
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.error || 'Verification failed');
+        }
+        
+        return true;
+    } catch (error) {
+        console.error(`Error verifying ${service} API key:`, error);
+        alert(`Failed to verify ${service} API key: ${error.message}`);
+        return false;
+    }
+}
+
+// Handle verify button clicks
+verifyButtons.forEach(button => {
+    button.addEventListener('click', async () => {
+        const service = button.dataset.service;
+        let key;
+        
+        // Reset button state
+        button.textContent = 'Verifying...';
+        button.classList.remove('verified', 'error');
+        
+        switch (service) {
+            case 'gemini':
+                key = geminiApiKey.value;
+                break;
+            case 'openai':
+                key = openaiApiKey.value;
+                break;
+            case 'gcp':
+                // Clean up the private key - remove all non-base64 characters
+                const privateKey = gcpPrivateKey.value
+                    .replace(/-----(BEGIN|END) PRIVATE KEY-----/g, '')
+                    .replace(/[\r\n\t\s]/g, '');
+                
+                key = JSON.stringify({
+                    projectId: gcpProjectId.value.trim(),
+                    clientEmail: gcpClientEmail.value.trim(),
+                    privateKey: privateKey
+                });
+                break;
+        }
+        
+        if (!key) {
+            button.textContent = 'Verify';
+            button.classList.add('error');
+            alert('Please enter API key details first');
+            return;
+        }
+        
+        const isValid = await verifyApiKey(service, key);
+        
+        if (isValid) {
+            button.textContent = 'Verified';
+            button.classList.add('verified');
+        } else {
+            button.textContent = 'Invalid';
+            button.classList.add('error');
+            setTimeout(() => {
+                button.textContent = 'Verify';
+                button.classList.remove('error');
+            }, 3000);
+        }
+    });
+});
+
 // Settings popup handlers
 settingsButton.addEventListener('click', () => {
     settingsPopup.classList.remove('hidden');
@@ -29,8 +123,28 @@ closeSettings.addEventListener('click', () => {
 });
 
 saveSettings.addEventListener('click', () => {
+    // Save translation service
     currentTranslationService = translationService.value;
     localStorage.setItem('translationService', currentTranslationService);
+    
+    // Save API keys
+    localStorage.setItem('geminiApiKey', geminiApiKey.value);
+    localStorage.setItem('openaiApiKey', openaiApiKey.value);
+    localStorage.setItem('gcpProjectId', gcpProjectId.value);
+    localStorage.setItem('gcpClientEmail', gcpClientEmail.value);
+    localStorage.setItem('gcpPrivateKey', gcpPrivateKey.value);
+    
+    // Update socket connection with new API keys
+    socket.emit('updateApiKeys', {
+        gemini: geminiApiKey.value,
+        openai: openaiApiKey.value,
+        gcp: {
+            projectId: gcpProjectId.value,
+            clientEmail: gcpClientEmail.value,
+            privateKey: gcpPrivateKey.value
+        }
+    });
+    
     settingsPopup.classList.add('hidden');
 });
 

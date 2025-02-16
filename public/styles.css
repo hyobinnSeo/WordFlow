@@ -300,6 +300,119 @@ select:focus {
   box-shadow: 0 0 0 3px rgba(98, 125, 152, 0.1);
 }
 
+/* Settings divider */
+.settings-divider {
+  margin: 1.5rem 0;
+  border: none;
+  border-top: 1px solid var(--gray-200);
+}
+
+/* API Key sections */
+.api-key-group {
+  margin-bottom: 2rem;
+}
+
+.api-key-item {
+  margin-bottom: 1rem;
+}
+
+.api-key-input-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.api-key-input-group input {
+  flex: 1;
+}
+
+.verify-button {
+  padding: 0.75rem 1rem;
+  background-color: var(--navy-500);
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.verify-button:hover {
+  background-color: var(--navy-600);
+}
+
+.verify-button.verified {
+  background-color: #22c55e;
+}
+
+.verify-button.error {
+  background-color: #ef4444;
+}
+
+/* Google Cloud section */
+.google-cloud-section {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--gray-200);
+}
+
+.google-cloud-section h3 {
+  margin-bottom: 1rem;
+  color: var(--navy-800);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.google-cloud-section .api-key-item {
+  margin-bottom: 1rem;
+}
+
+.google-cloud-section textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 0.75rem;
+  border: 1px solid var(--gray-200);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  resize: vertical;
+  font-family: monospace;
+}
+
+.google-cloud-section textarea:focus {
+  outline: none;
+  border-color: var(--navy-400);
+  box-shadow: 0 0 0 3px rgba(98, 125, 152, 0.1);
+}
+
+.gcp-verify {
+  margin-top: 0.5rem;
+}
+
+/* Settings headings */
+.settings-content h3 {
+  margin: 1rem 0;
+  color: var(--navy-800);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+/* Password input styling */
+input[type="password"] {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--gray-200);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+input[type="password"]:focus {
+  outline: none;
+  border-color: var(--navy-400);
+  box-shadow: 0 0 0 3px rgba(98, 125, 152, 0.1);
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .text-areas-container {

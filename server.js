@@ -158,6 +158,71 @@ ${text}`
     }
 }
 
+// Add JSON parsing middleware
+app.use(express.json());
+
+// API key verification endpoint
+app.post('/verify-api-key', async (req, res) => {
+    const { service, key } = req.body;
+    
+    try {
+        switch (service) {
+            case 'gemini':
+                const tempGenAI = new GoogleGenerativeAI(key);
+                const model = tempGenAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-preview-02-05" });
+                await model.generateContent("Test"); // Verify key works
+                break;
+                
+            case 'openai':
+                const tempOpenAI = new OpenAI({ apiKey: key });
+                await tempOpenAI.chat.completions.create({
+                    model: "gpt-4o-mini",
+                    messages: [{ role: "user", content: "Test" }]
+                });
+                break;
+                
+            case 'gcp':
+                const credentials = JSON.parse(key);
+                // Format private key
+                const cleanKey = credentials.privateKey
+                    .replace(/\\n/g, '\n')
+                    .replace(/\r\n/g, '\n')
+                    .replace(/\r/g, '\n')
+                    .replace(/-----BEGIN PRIVATE KEY-----/g, '')
+                    .replace(/-----END PRIVATE KEY-----/g, '')
+                    .replace(/\s/g, '');
+
+                // Format key in proper PEM format
+                const formattedPrivateKey = [
+                    '-----BEGIN PRIVATE KEY-----',
+                    ...cleanKey.match(/.{1,64}/g) || [],
+                    '-----END PRIVATE KEY-----'
+                ].join('\n');
+                
+                const tempTranslate = new Translate({
+                    projectId: credentials.projectId,
+                    credentials: {
+                        client_email: credentials.clientEmail,
+                        private_key: formattedPrivateKey
+                    }
+                });
+                await tempTranslate.translate("Test", 'ko');
+                break;
+                
+            default:
+                throw new Error('Invalid service');
+        }
+        
+        res.json({ success: true });
+    } catch (error) {
+        console.error(`Error verifying ${service} API key:`, error);
+        res.status(400).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+});
+
 // Basic route for testing
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));

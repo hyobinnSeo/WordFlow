@@ -42,6 +42,45 @@
                             <option value="google">Google Cloud Translation</option>
                         </select>
                     </div>
+
+                    <hr class="settings-divider">
+                    
+                    <h3>API Keys</h3>
+                    <div class="api-key-group">
+                        <div class="api-key-item">
+                            <label for="geminiApiKey">Gemini API Key</label>
+                            <div class="api-key-input-group">
+                                <input type="password" id="geminiApiKey" placeholder="Enter Gemini API Key">
+                                <button class="verify-button" data-service="gemini">Verify</button>
+                            </div>
+                        </div>
+                        
+                        <div class="api-key-item">
+                            <label for="openaiApiKey">OpenAI API Key</label>
+                            <div class="api-key-input-group">
+                                <input type="password" id="openaiApiKey" placeholder="Enter OpenAI API Key">
+                                <button class="verify-button" data-service="openai">Verify</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="google-cloud-section">
+                        <h3>Google Cloud</h3>
+                        <div class="api-key-item">
+                            <label for="gcpProjectId">Project ID</label>
+                            <input type="text" id="gcpProjectId" placeholder="Enter Project ID">
+                        </div>
+                        <div class="api-key-item">
+                            <label for="gcpClientEmail">Client Email</label>
+                            <input type="text" id="gcpClientEmail" placeholder="Enter Client Email">
+                        </div>
+                        <div class="api-key-item">
+                            <label for="gcpPrivateKey">Private Key</label>
+                            <textarea id="gcpPrivateKey" placeholder="Enter Private Key"></textarea>
+                        </div>
+                        <button class="verify-button gcp-verify" data-service="gcp">Verify</button>
+                    </div>
+
                     <div class="settings-buttons">
                         <button id="saveSettings" class="control-button">Save</button>
                         <button id="closeSettings" class="control-button">Cancel</button>

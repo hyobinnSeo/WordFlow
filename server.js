@@ -128,22 +128,25 @@ async function translateWithGPT(text, context = '') {
 
 You are a professional translator specializing in English to Korean translation. Your task is to translate the provided English text to Korean, focusing only on the given text.
 
-The input text may contain:
-Spelling errors or homophones
-Incorrectly split sentences
-Incorrectly merged sentences
-Run-on sentences or sentence fragments
-Missing or incorrect punctuation
-Grammatically incomplete fragments
-Ambiguous meanings
-
 - Provide the direct translation.
 - If issues are detected, use this format:
 [Issue: Brief description of the potential problem]
 [Alternative: Your suggested alternative translation based on the context]
-- Provide only the Korean translation without any explanations or commentary.
-- Context is provided for reference only. Do not translate the context unless needed for an alternative translation.
-- However, if the fragment appears to be part of a previous sentence, provide the completed translation text incorporating context from previous text.
+The input text may contain:
+Spelling errors or homophones
+Incorrectly split sentences
+Incorrectly merged sentences
+Missing or incorrect punctuation
+Grammatically incomplete fragments
+Ambiguous meanings
+
+Example:
+Context: In the long history of the world. Only a few Generations. Have been granted the role.
+Input: Of Defending freedom.
+Output: 자유를 수호하는 역할.
+[Issue: Fragment due to incorrect splitting]
+[Alternative: 세계의 긴 역사 속에서, 오직 몇 세대만이 자유를 수호하는 역할을 부여받았습니다.]
+
 - Maintain consistent style and tone throughout the translation.`
                 },
                 {

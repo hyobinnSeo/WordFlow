@@ -1,5 +1,5 @@
-require('dotenv').config();
 const express = require('express');
+const fs = require('fs');
 const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http, {
@@ -17,35 +17,55 @@ const OpenAI = require('openai');
 // Serve static files from public directory
 app.use(express.static('public'));
 
-// Create API clients
-let client;
-let genAI;
-let translate;
-let openai;
-try {
-    // Set credentials using single API key file
-    process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow.json');
-    client = new speech.SpeechClient();
-    translate = new Translate();
-    
-    // Initialize Gemini API with the API key
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-    if (!GEMINI_API_KEY || GEMINI_API_KEY === 'your_gemini_api_key_here') {
-        throw new Error('Please set your Gemini API key in the .env file');
+// Load API keys from json file
+const loadApiKeys = () => {
+    try {
+        const keysPath = path.join(__dirname, 'keys', 'api-keys.json');
+        const keys = JSON.parse(fs.readFileSync(keysPath, 'utf8'));
+        return keys;
+    } catch (error) {
+        console.error('Error loading API keys:', error);
+        return { openai: null, gemini: null, gcp: null };
     }
-    genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+};
 
-    // Initialize OpenAI API
-    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-    if (!OPENAI_API_KEY || OPENAI_API_KEY === 'your_openai_api_key_here') {
-        throw new Error('Please set your OpenAI API key in the .env file');
+// Initialize API clients
+let client = null;
+let genAI = null;
+let translate = null;
+let openai = null;
+
+// Function to initialize clients with verified keys
+const initializeClients = () => {
+    try {
+        const apiKeys = loadApiKeys();
+        
+        // Initialize Gemini API if key exists
+        if (apiKeys.gemini) {
+            genAI = new GoogleGenerativeAI(apiKeys.gemini);
+        }
+
+        // Initialize OpenAI API if key exists
+        if (apiKeys.openai) {
+            openai = new OpenAI({ apiKey: apiKeys.openai });
+        }
+        
+        // Initialize Google Cloud clients if credentials exist
+        const gcpCredentialsPath = path.join(__dirname, 'keys', 'voiceflow.json');
+        if (fs.existsSync(gcpCredentialsPath)) {
+            process.env.GOOGLE_APPLICATION_CREDENTIALS = gcpCredentialsPath;
+            client = new speech.SpeechClient();
+            translate = new Translate();
+        }
+        
+        console.log('Successfully initialized available API clients');
+    } catch (error) {
+        console.error('Error initializing clients:', error);
     }
-    openai = new OpenAI({ apiKey: OPENAI_API_KEY });
-    
-    console.log('Successfully initialized API clients');
-} catch (error) {
-    console.error('Error initializing clients:', error);
-}
+};
+
+// Initial client initialization
+initializeClients();
 
 // Translation function using Google Cloud Translation API
 async function translateWithGoogle(text) {
@@ -171,6 +191,21 @@ app.post('/verify-api-key', async (req, res) => {
                 const tempGenAI = new GoogleGenerativeAI(key);
                 const model = tempGenAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-preview-02-05" });
                 await model.generateContent("Test"); // Verify key works
+                
+                // Ensure keys directory exists
+                const keysDir = path.join(__dirname, 'keys');
+                if (!fs.existsSync(keysDir)) {
+                    fs.mkdirSync(keysDir, { recursive: true });
+                }
+
+                // Save verified key to api-keys.json
+                const apiKeys = loadApiKeys();
+                apiKeys.gemini = key;
+                const keysPath = path.join(keysDir, 'api-keys.json');
+                fs.writeFileSync(keysPath, JSON.stringify(apiKeys, null, 2));
+                
+                // Reinitialize clients
+                initializeClients();
                 break;
                 
             case 'openai':
@@ -184,34 +219,86 @@ app.post('/verify-api-key', async (req, res) => {
                     model: "gpt-3.5-turbo", // Use a standard model for verification
                     messages: [{ role: "user", content: "Test" }]
                 });
+                
+                // Ensure keys directory exists
+                const openaiKeysDir = path.join(__dirname, 'keys');
+                if (!fs.existsSync(openaiKeysDir)) {
+                    fs.mkdirSync(openaiKeysDir, { recursive: true });
+                }
+
+                // Save verified key to api-keys.json
+                const openaiKeys = loadApiKeys();
+                openaiKeys.openai = key;
+                const openaiKeysPath = path.join(openaiKeysDir, 'api-keys.json');
+                fs.writeFileSync(openaiKeysPath, JSON.stringify(openaiKeys, null, 2));
+                
+                // Reinitialize clients
+                initializeClients();
                 break;
                 
             case 'gcp':
                 const credentials = JSON.parse(key);
-                // Format private key
-                const cleanKey = credentials.privateKey
-                    .replace(/\\n/g, '\n')
-                    .replace(/\r\n/g, '\n')
-                    .replace(/\r/g, '\n')
-                    .replace(/-----BEGIN PRIVATE KEY-----/g, '')
-                    .replace(/-----END PRIVATE KEY-----/g, '')
-                    .replace(/\s/g, '');
-
-                // Format key in proper PEM format
-                const formattedPrivateKey = [
-                    '-----BEGIN PRIVATE KEY-----',
-                    ...cleanKey.match(/.{1,64}/g) || [],
-                    '-----END PRIVATE KEY-----'
-                ].join('\n');
                 
+                // Convert frontend field names to expected format
+                const formattedInput = {
+                    project_id: credentials.projectId || credentials['Project ID'],
+                    client_email: credentials.clientEmail || credentials['Client Email'],
+                    private_key: credentials.privateKey || credentials['Private Key']
+                };
+
+                // Validate required GCP fields
+                if (!formattedInput.project_id || !formattedInput.private_key || !formattedInput.client_email) {
+                    throw new Error('Invalid GCP credentials format. Missing required fields (Project ID, Private Key, Client Email)');
+                }
+                
+                // Format private key if needed
+                let privateKey = formattedInput.private_key;
+                if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+                    const cleanKey = privateKey
+                        .replace(/\\n/g, '\n')
+                        .replace(/\r\n/g, '\n')
+                        .replace(/\r/g, '\n')
+                        .replace(/-----BEGIN PRIVATE KEY-----/g, '')
+                        .replace(/-----END PRIVATE KEY-----/g, '')
+                        .replace(/\s/g, '');
+
+                    privateKey = [
+                        '-----BEGIN PRIVATE KEY-----',
+                        ...cleanKey.match(/.{1,64}/g) || [],
+                        '-----END PRIVATE KEY-----'
+                    ].join('\n');
+                }
+                
+                // Create properly formatted credentials object
+                const formattedCredentials = {
+                    type: 'service_account',
+                    project_id: formattedInput.project_id,
+                    private_key: privateKey,
+                    client_email: formattedInput.client_email
+                };
+                
+                // Test the credentials
                 const tempTranslate = new Translate({
-                    projectId: credentials.projectId,
+                    projectId: formattedCredentials.project_id,
                     credentials: {
-                        client_email: credentials.clientEmail,
-                        private_key: formattedPrivateKey
+                        client_email: formattedCredentials.client_email,
+                        private_key: formattedCredentials.private_key
                     }
                 });
                 await tempTranslate.translate("Test", 'ko');
+                
+                // Ensure keys directory exists
+                const gcpKeysDir = path.join(__dirname, 'keys');
+                if (!fs.existsSync(gcpKeysDir)) {
+                    fs.mkdirSync(gcpKeysDir, { recursive: true });
+                }
+
+                // If verification successful, save formatted credentials to voiceflow.json
+                const voiceflowPath = path.join(gcpKeysDir, 'voiceflow.json');
+                fs.writeFileSync(voiceflowPath, JSON.stringify(formattedCredentials, null, 2));
+                
+                // Reinitialize clients with new credentials
+                initializeClients();
                 break;
                 
             default:
@@ -246,8 +333,12 @@ io.on('connection', (socket) => {
 
     // Function to create a new recognize stream
     const createRecognizeStream = () => {
-        // Using single API key file for speech-to-text
-        process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'keys', 'voiceflow.json');
+        // Check if GCP credentials exist
+        const gcpCredentialsPath = path.join(__dirname, 'keys', 'voiceflow.json');
+        if (!fs.existsSync(gcpCredentialsPath)) {
+            throw new Error('Google Cloud credentials not found. Please verify your GCP key in settings.');
+        }
+        process.env.GOOGLE_APPLICATION_CREDENTIALS = gcpCredentialsPath;
         
         console.log('Starting new recognize stream...');
         
@@ -340,17 +431,22 @@ io.on('connection', (socket) => {
             let translatedText;
             switch (data.service) {
                 case 'google':
+                    if (!translate) {
+                        throw new Error('Google Cloud Translation not initialized. Please verify your GCP credentials in settings.');
+                    }
                     translatedText = await translateWithGoogle(data.text);
                     break;
                 case 'gemini-flash':
+                    if (!genAI) {
+                        throw new Error('Gemini API not initialized. Please verify your Gemini API key in settings.');
+                    }
                     translatedText = await translateWithGeminiFlash(data.text, data.context || '');
                     break;
                 case 'gpt-mini':
-                    if (!apiKeys.openai) {
-                        throw new Error('OpenAI API key not set. Please verify your API key in settings.');
+                    if (!openai) {
+                        throw new Error('OpenAI API not initialized. Please verify your OpenAI API key in settings.');
                     }
-                    const tempOpenAI = new OpenAI({ apiKey: apiKeys.openai });
-                    const response = await tempOpenAI.chat.completions.create({
+                    const response = await openai.chat.completions.create({
                         model: "gpt-3.5-turbo",
                         messages: [
                             {

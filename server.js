@@ -174,9 +174,14 @@ app.post('/verify-api-key', async (req, res) => {
                 break;
                 
             case 'openai':
+                // Validate OpenAI key format
+                if (!key.startsWith('sk-')) {
+                    throw new Error('Invalid OpenAI API key format. Please use an API key that starts with "sk-"');
+                }
+                
                 const tempOpenAI = new OpenAI({ apiKey: key });
                 await tempOpenAI.chat.completions.create({
-                    model: "gpt-4o-mini",
+                    model: "gpt-3.5-turbo", // Use a standard model for verification
                     messages: [{ role: "user", content: "Test" }]
                 });
                 break;
@@ -319,6 +324,17 @@ io.on('connection', (socket) => {
     };
 
     // Handle translation requests
+    // Store API keys
+    let apiKeys = {
+        openai: null,
+        gemini: null,
+        gcp: null
+    };
+
+    socket.on('updateApiKeys', (keys) => {
+        apiKeys = { ...apiKeys, ...keys };
+    });
+
     socket.on('requestTranslation', async (data) => {
         try {
             let translatedText;
@@ -330,7 +346,46 @@ io.on('connection', (socket) => {
                     translatedText = await translateWithGeminiFlash(data.text, data.context || '');
                     break;
                 case 'gpt-mini':
-                    translatedText = await translateWithGPT(data.text, data.context || '');
+                    if (!apiKeys.openai) {
+                        throw new Error('OpenAI API key not set. Please verify your API key in settings.');
+                    }
+                    const tempOpenAI = new OpenAI({ apiKey: apiKeys.openai });
+                    const response = await tempOpenAI.chat.completions.create({
+                        model: "gpt-3.5-turbo",
+                        messages: [
+                            {
+                                role: "system",
+                                content: `[Instructions]
+
+You are a professional translator specializing in English to Korean translation. Your task is to translate the provided English text to Korean, focusing only on the given text.
+
+The input text may contain:
+Spelling errors or homophones
+Grammatically incomplete fragments
+Ambiguous meanings
+
+- If there are no issues, please provide only the Korean translation without any explanations or commentary.
+- If issues are detected, use this format:
+{Direct Korean translation}
+[Issue: {Brief description of the potential problem in Korean}]
+[Alternative: {Your suggested alternative Korean translation based on the context}]
+The most common issue: If the sentence fragment appears to be part of a previous sentence:
+1. Keep track of all fragments to reconstruct the complete sentence.
+2. When the final fragment is detected, provide: A complete, natural translation of the entire reconstructed sentence.
+NOTE: Provide a natural, conversational Korean translation.`
+                            },
+                            {
+                                role: "user",
+                                content: `Context:
+${data.context ? data.context.slice(0, 1000) : ''}
+
+Text to be translated:
+${data.text}`
+                            }
+                        ],
+                        temperature: 0.3
+                    });
+                    translatedText = response.choices[0].message.content.trim();
                     break;
                 default:
                     throw new Error('Invalid translation service selected');

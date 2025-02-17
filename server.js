@@ -88,7 +88,7 @@ async function translateWithGeminiFlash(text, context = '') {
         
         const prompt = `[Instructions]
 
-You are a professional translator specializing in English to Korean translation. Your task is to translate the provided English text to Korean, focusing only on the given text.
+You are a professional translator specializing in English to Korean translation. Your task is to translate the provided English text to Korean, focusing only on the given text. Provide a natural, conversational Korean translation.
 
 The input text may contain:
 Spelling errors or homophones
@@ -97,13 +97,12 @@ Ambiguous meanings
 
 - If there are no issues, please provide only the Korean translation without any explanations or commentary.
 - If issues are detected, use this format:
-{Direct Korean translation}
+Direct Korean translation
 [Issue: {Brief description of the potential problem in Korean}]
 [Alternative: {Your suggested alternative Korean translation based on the context}]
 The most common issue: If the sentence fragment appears to be part of a previous sentence:
 1. Keep track of all fragments to reconstruct the complete sentence.
 2. When the final fragment is detected, provide: A complete, natural translation of the entire reconstructed sentence.
-NOTE: Provide a natural, conversational Korean translation.
 
 Context:
 ${context.slice(0, 1000)}
@@ -142,7 +141,7 @@ async function translateWithGPT(text, context = '') {
                     role: "system",
                     content: `[Instructions]
 
-You are a professional translator specializing in English to Korean translation. Your task is to translate the provided English text to Korean, focusing only on the given text.
+You are a professional translator specializing in English to Korean translation. Your task is to translate the provided English text to Korean, focusing only on the given text. Provide a natural, conversational Korean translation.
 
 The input text may contain:
 Spelling errors or homophones
@@ -151,13 +150,27 @@ Ambiguous meanings
 
 - If there are no issues, please provide only the Korean translation without any explanations or commentary.
 - If issues are detected, use this format:
-{Direct Korean translation}
+Direct Korean translation
 [Issue: {Brief description of the potential problem in Korean}]
 [Alternative: {Your suggested alternative Korean translation based on the context}]
-The most common issue: If the sentence fragment appears to be part of a previous sentence:
+If the sentence fragment appears to be part of a previous sentence:
 1. Keep track of all fragments to reconstruct the complete sentence.
 2. When the final fragment is detected, provide: A complete, natural translation of the entire reconstructed sentence.
-NOTE: Provide a natural, conversational Korean translation.`
+
+Example:
+
+Context:
+In the long history of the world.
+Only a few Generations.
+Have been granted the role.
+Of Defending freedom.
+
+Input: In its hour of Maximum Danger.
+
+Your Response:
+최대 위험에 처한 때.
+[Issue: 이 문구는 이전 문장의 일부로 보입니다. 맥락에 따른 전체 문장을 제공합니다.]
+[Alternative: 세계 역사를 통틀어 가장 위태로운 순간에 자유를 수호하는 막중한 임무를 부여받은 세대는 극히 일부에 불과합니다.]`
                 },
                 {
                     role: "user",

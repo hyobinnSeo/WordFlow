@@ -326,6 +326,10 @@ app.get('/', (req, res) => {
 io.on('connection', (socket) => {
     console.log('Client connected');
     
+    // Initialize socket with default language settings
+    socket.sourceLanguage = 'en-US';
+    socket.targetLanguage = 'ko';
+    
     let recognizeStream = null;
     let isStreamActive = false;
     let streamRestartTimeout;

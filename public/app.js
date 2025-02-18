@@ -484,6 +484,12 @@ socket.on('timeRemaining', (data) => {
 socket.on('connect', () => {
     console.log('Connected to server');
     recordButton.disabled = false;
+    
+    // Send saved language settings on connection
+    socket.emit('updateApiKeys', {
+        sourceLanguage: currentSourceLanguage,
+        targetLanguage: currentTargetLanguage
+    });
 });
 
 socket.on('disconnect', () => {

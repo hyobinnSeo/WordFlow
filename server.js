@@ -67,46 +67,35 @@ const initializeClients = () => {
 // Initial client initialization
 initializeClients();
 
-// Translation function using Google Cloud Translation API
-async function translateWithGoogle(text) {
-    try {
-        const [translation] = await translate.translate(text, 'ko');
-        return translation;
-    } catch (error) {
-        console.error('Google Translation error:', error);
-        throw error;
-    }
-}
-
 // Default prompts
 const DEFAULT_PROMPTS = {
-    gemini: `You are a professional translator specializing in English to Korean translation. Your task is to translate the provided English text to Korean, focusing only on the given text.
+    gemini: `You are a professional translator specializing in translation between the selected languages. Your task is to translate the provided text from the source language to the target language, focusing only on the given text.
 
 The input text may contain:
 Spelling errors or homophones
 Grammatically incomplete fragments
 Ambiguous meanings
 
-- If there are no issues, please provide only the Korean translation without any explanations or commentary.
+- If there are no issues, please provide only the translation without any explanations or commentary.
 - If issues are detected, use this format:
-Direct Korean translation
-[Issue: Brief description of the potential problem in Korean]
-[Alternative: Your suggested alternative Korean translation based on the context]
+Direct translation
+[Issue: Brief description of the potential problem]
+[Alternative: Your suggested alternative translation based on the context]
 The most common issue: If the sentence fragment appears to be part of a previous sentence:
 1. Keep track of all fragments to reconstruct the complete sentence.
 2. When the final fragment is detected, provide: A complete, natural translation of the entire reconstructed sentence.`,
-    openai: `You are a professional translator specializing in English to Korean translation. Your task is to translate the provided English text to Korean, focusing only on the given text.
+    openai: `You are a professional translator specializing in translation between the selected languages. Your task is to translate the provided text from the source language to the target language, focusing only on the given text.
 
 The input text may contain:
 Spelling errors or homophones
 Grammatically incomplete fragments
 Ambiguous meanings
 
-- If there are no issues, please provide only the Korean translation without any explanations or commentary.
+- If there are no issues, please provide only the translation without any explanations or commentary.
 - If issues are detected, use this format:
-Direct Korean translation
-[Issue: Brief description of the potential problem in Korean]
-[Alternative: Your suggested alternative Korean translation based on the context]
+Direct translation
+[Issue: Brief description of the potential problem]
+[Alternative: Your suggested alternative translation based on the context]
 The most common issue: If the sentence fragment appears to be part of a previous sentence:
 1. Keep track of all fragments to reconstruct the complete sentence.
 2. When the final fragment is detected, provide: A complete, natural translation of the entire reconstructed sentence.`
@@ -116,7 +105,7 @@ The most common issue: If the sentence fragment appears to be part of a previous
 let currentPrompts = { ...DEFAULT_PROMPTS };
 
 // Translation function using Gemini Flash API
-async function translateWithGeminiFlash(text, context = '', customPrompt = '') {
+async function translateWithGeminiFlash(text, context = '', customPrompt = '', sourceLanguage = 'en', targetLanguage = 'ko') {
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-preview-02-05" });
         
@@ -126,6 +115,9 @@ async function translateWithGeminiFlash(text, context = '', customPrompt = '') {
         const prompt = `[Instructions]
 
 ${customPrompt || currentPrompts.gemini}
+
+Source Language: ${sourceLanguage}
+Target Language: ${targetLanguage}
 
 Context:
 ${context.slice(0, 1000)}
@@ -155,7 +147,7 @@ Text to be translated:
 }
 
 // Translation function using GPT-4o-mini
-async function translateWithGPT(text, context = '', customPrompt = '') {
+async function translateWithGPT(text, context = '', customPrompt = '', sourceLanguage = 'en', targetLanguage = 'ko') {
     try {
         const response = await openai.chat.completions.create({
             model: "gpt-4o-mini",
@@ -164,7 +156,10 @@ async function translateWithGPT(text, context = '', customPrompt = '') {
                     role: "system",
                     content: `[Instructions]
 
-${customPrompt || currentPrompts.openai}`
+${customPrompt || currentPrompts.openai}
+
+Source Language: ${sourceLanguage}
+Target Language: ${targetLanguage}`
                 },
                 {
                     role: "user",
@@ -353,7 +348,7 @@ io.on('connection', (socket) => {
             config: {
                 encoding: 'LINEAR16',
                 sampleRateHertz: 16000,
-                languageCode: 'en-US',
+                languageCode: socket.sourceLanguage || 'en-US',
                 enableAutomaticPunctuation: true,
                 model: 'default',
                 useEnhanced: true,
@@ -434,6 +429,12 @@ io.on('connection', (socket) => {
         if (data.prompts) {
             currentPrompts = { ...currentPrompts, ...data.prompts };
         }
+        if (data.sourceLanguage) {
+            socket.sourceLanguage = data.sourceLanguage;
+        }
+        if (data.targetLanguage) {
+            socket.targetLanguage = data.targetLanguage;
+        }
     });
 
     socket.on('requestTranslation', async (data) => {
@@ -444,19 +445,32 @@ io.on('connection', (socket) => {
                     if (!translate) {
                         throw new Error('Google Cloud Translation not initialized. Please verify your GCP credentials in settings.');
                     }
-                    translatedText = await translateWithGoogle(data.text);
+                    const [translation] = await translate.translate(data.text, data.targetLanguage || 'ko');
+                    translatedText = translation;
                     break;
                 case 'gemini-flash':
                     if (!genAI) {
                         throw new Error('Gemini API not initialized. Please verify your Gemini API key in settings.');
                     }
-                    translatedText = await translateWithGeminiFlash(data.text, data.context || '', currentPrompts.gemini);
+                    translatedText = await translateWithGeminiFlash(
+                        data.text, 
+                        data.context || '', 
+                        currentPrompts.gemini,
+                        data.sourceLanguage || 'en',
+                        data.targetLanguage || 'ko'
+                    );
                     break;
                 case 'gpt-mini':
                     if (!openai) {
                         throw new Error('OpenAI API not initialized. Please verify your OpenAI API key in settings.');
                     }
-                    translatedText = await translateWithGPT(data.text, data.context || '', currentPrompts.openai);
+                    translatedText = await translateWithGPT(
+                        data.text, 
+                        data.context || '', 
+                        currentPrompts.openai,
+                        data.sourceLanguage || 'en',
+                        data.targetLanguage || 'ko'
+                    );
                     break;
                 default:
                     throw new Error('Invalid translation service selected');

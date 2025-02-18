@@ -10,6 +10,8 @@ const autoScrollButton = document.getElementById('autoScrollButton');
 const settingsButton = document.getElementById('settingsButton');
 const settingsPopup = document.getElementById('settingsPopup');
 const translationService = document.getElementById('translationService');
+const sourceLanguage = document.getElementById('sourceLanguage');
+const targetLanguage = document.getElementById('targetLanguage');
 const saveSettings = document.getElementById('saveSettings');
 const closeSettings = document.getElementById('closeSettings');
 const transcriptionArea = document.getElementById('transcription');
@@ -17,33 +19,33 @@ const copyTranscriptionButton = document.getElementById('copyTranscriptionButton
 
 // Default prompts
 const DEFAULT_PROMPTS = {
-    gemini: `You are a professional translator specializing in English to Korean translation. Your task is to translate the provided English text to Korean, focusing only on the given text.
+    gemini: `You are a professional translator specializing in translation between the selected languages. Your task is to translate the provided text from the source language to the target language, focusing only on the given text.
 
 The input text may contain:
 Spelling errors or homophones
 Grammatically incomplete fragments
 Ambiguous meanings
 
-- If there are no issues, please provide only the Korean translation without any explanations or commentary.
+- If there are no issues, please provide only the translation without any explanations or commentary.
 - If issues are detected, use this format:
-Direct Korean translation
-[Issue: {Brief description of the potential problem in Korean}]
-[Alternative: {Your suggested alternative Korean translation based on the context}]
+Direct translation
+[Issue: Brief description of the potential problem]
+[Alternative: Your suggested alternative translation based on the context]
 The most common issue: If the sentence fragment appears to be part of a previous sentence:
 1. Keep track of all fragments to reconstruct the complete sentence.
 2. When the final fragment is detected, provide: A complete, natural translation of the entire reconstructed sentence.`,
-    openai: `You are a professional translator specializing in English to Korean translation. Your task is to translate the provided English text to Korean, focusing only on the given text.
+    openai: `You are a professional translator specializing in translation between the selected languages. Your task is to translate the provided text from the source language to the target language, focusing only on the given text.
 
 The input text may contain:
 Spelling errors or homophones
 Grammatically incomplete fragments
 Ambiguous meanings
 
-- If there are no issues, please provide only the Korean translation without any explanations or commentary.
+- If there are no issues, please provide only the translation without any explanations or commentary.
 - If issues are detected, use this format:
-Direct Korean translation
-[Issue: {Brief description of the potential problem in Korean}]
-[Alternative: {Your suggested alternative Korean translation based on the context}]
+Direct translation
+[Issue: Brief description of the potential problem]
+[Alternative: Your suggested alternative translation based on the context]
 The most common issue: If the sentence fragment appears to be part of a previous sentence:
 1. Keep track of all fragments to reconstruct the complete sentence.
 2. When the final fragment is detected, provide: A complete, natural translation of the entire reconstructed sentence.`
@@ -51,7 +53,12 @@ The most common issue: If the sentence fragment appears to be part of a previous
 
 // Settings management
 let currentTranslationService = localStorage.getItem('translationService') || 'google';
+let currentSourceLanguage = localStorage.getItem('sourceLanguage') || 'en';
+let currentTargetLanguage = localStorage.getItem('targetLanguage') || 'ko';
+
 translationService.value = currentTranslationService;
+sourceLanguage.value = currentSourceLanguage;
+targetLanguage.value = currentTargetLanguage;
 
 // Prompt elements
 const promptModel = document.getElementById('promptModel');
@@ -188,9 +195,14 @@ closeSettings.addEventListener('click', () => {
 });
 
 saveSettings.addEventListener('click', () => {
-    // Save translation service
+    // Save translation service and languages
     currentTranslationService = translationService.value;
+    currentSourceLanguage = sourceLanguage.value;
+    currentTargetLanguage = targetLanguage.value;
+    
     localStorage.setItem('translationService', currentTranslationService);
+    localStorage.setItem('sourceLanguage', currentSourceLanguage);
+    localStorage.setItem('targetLanguage', currentTargetLanguage);
     
     // Save settings
     localStorage.setItem('geminiApiKey', geminiApiKey.value);
@@ -210,7 +222,9 @@ saveSettings.addEventListener('click', () => {
             clientEmail: gcpClientEmail.value,
             privateKey: gcpPrivateKey.value
         },
-        prompts: currentPrompts
+        prompts: currentPrompts,
+        sourceLanguage: currentSourceLanguage,
+        targetLanguage: currentTargetLanguage
     });
     
     settingsPopup.classList.add('hidden');
@@ -432,7 +446,9 @@ socket.on('transcription', (data) => {
         socket.emit('requestTranslation', {
             text: data.text,
             service: currentTranslationService,
-            context: context.trim()
+            context: context.trim(),
+            sourceLanguage: currentSourceLanguage,
+            targetLanguage: currentTargetLanguage
         });
     } else {
         interimTranscript = data.text;

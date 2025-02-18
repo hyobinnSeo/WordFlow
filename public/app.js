@@ -227,15 +227,15 @@ let mediaRecorder;
 let audioContext;
 let audioInput;
 let processor;
-let mediaStream; // Added to store the media stream
+let mediaStream;
 const bufferSize = 2048;
 let finalTranscript = '';
 let interimTranscript = '';
-let translations = new Map(); // Store translations for each sentence
+let translations = new Map();
 let isAutoScrollEnabled = true;
 let isRecording = false;
-let previousSentences = []; // Store previous sentences for context
-const MAX_CONTEXT_LENGTH = 1000; // Maximum context length in characters
+let previousSentences = [];
+const MAX_CONTEXT_LENGTH = 1000;
 
 // Debug logging
 console.log('Script loaded');
@@ -253,7 +253,7 @@ async function copyToClipboard(text) {
 
 // Copy button event listener
 copyTranscriptionButton.addEventListener('click', async () => {
-    const success = await copyToClipboard(transcriptionArea.value);
+    const success = await copyToClipboard(transcriptionArea.innerText);
     const originalText = copyTranscriptionButton.textContent;
     
     copyTranscriptionButton.textContent = success ? '✓ Copied!' : '❌ Failed to copy';
@@ -269,9 +269,9 @@ autoScrollButton.addEventListener('click', () => {
 });
 
 // Function to handle auto-scrolling
-function autoScrollTextArea(textarea) {
+function autoScrollTextArea(element) {
     if (isAutoScrollEnabled) {
-        textarea.scrollTop = textarea.scrollHeight;
+        element.scrollTop = element.scrollHeight;
     }
 }
 
@@ -282,7 +282,6 @@ function stopRecordingUI() {
         processor.disconnect(audioContext.destination);
     }
 
-    // Stop all tracks in the media stream
     if (mediaStream) {
         mediaStream.getTracks().forEach(track => {
             track.stop();
@@ -290,7 +289,6 @@ function stopRecordingUI() {
         mediaStream = null;
     }
 
-    // Reset audio context
     if (audioContext) {
         audioContext.close();
         audioContext = null;
@@ -301,7 +299,6 @@ function stopRecordingUI() {
     recordButton.classList.remove('recording');
     console.log('Stopped recording');
     
-    // Add the last interim transcript to final if it exists
     if (interimTranscript) {
         finalTranscript += (finalTranscript ? '\n\n' : '') + interimTranscript;
         interimTranscript = '';
@@ -334,16 +331,11 @@ async function initAudioContext() {
 
         processor.onaudioprocess = (e) => {
             const inputData = e.inputBuffer.getChannelData(0);
-            
-            // Convert Float32Array to Int16Array
             const int16Data = new Int16Array(inputData.length);
             for (let i = 0; i < inputData.length; i++) {
-                // Convert float to int16
                 const s = Math.max(-1, Math.min(1, inputData[i]));
                 int16Data[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
             }
-            
-            // Send the buffer
             socket.emit('audioData', int16Data.buffer);
         };
 
@@ -359,7 +351,6 @@ async function initAudioContext() {
 // Toggle recording
 recordButton.addEventListener('click', async () => {
     if (!isRecording) {
-        // Start recording
         console.log('Starting recording...');
         try {
             if (!audioContext) {
@@ -381,7 +372,6 @@ recordButton.addEventListener('click', async () => {
             alert('Error starting recording. Please try again.');
         }
     } else {
-        // Stop recording
         console.log('Stopping recording...');
         try {
             socket.emit('endGoogleCloudStream');
@@ -395,29 +385,28 @@ recordButton.addEventListener('click', async () => {
 
 // Update the transcription area with current transcripts and translations
 function updateTranscriptionArea() {
-    let displayText = '';
+    let displayHtml = '';
     const sentences = finalTranscript.split('\n\n');
     
-    // Add each sentence and its translation
     sentences.forEach((sentence, index) => {
         if (sentence) {
-            displayText += sentence;
+            displayHtml += `<div class="transcript-line">${sentence}</div>`;
             const translation = translations.get(sentence);
             if (translation) {
-                displayText += '\n→ ' + translation;
+                displayHtml += `<div class="translation-line">→ ${translation}</div>`;
             }
             if (index < sentences.length - 1) {
-                displayText += '\n\n';
+                displayHtml += '<div class="spacer"></div>';
             }
         }
     });
     
-    // Add interim transcript if exists
     if (interimTranscript) {
-        displayText += (displayText ? '\n\n' : '') + interimTranscript;
+        displayHtml += (displayHtml ? '<div class="spacer"></div>' : '') + 
+                      `<div class="transcript-line">${interimTranscript}</div>`;
     }
     
-    transcriptionArea.value = displayText;
+    transcriptionArea.innerHTML = displayHtml;
     autoScrollTextArea(transcriptionArea);
 }
 
@@ -426,14 +415,11 @@ socket.on('transcription', (data) => {
     console.log('Received transcription:', data);
     
     if (data.isFinal) {
-        // Add to final transcript with two new lines between sentences
         finalTranscript += (finalTranscript ? '\n\n' : '') + data.text;
         interimTranscript = '';
         
-        // Add the new sentence to previous sentences
         previousSentences.push(data.text);
         
-        // Keep only enough previous sentences to stay under MAX_CONTEXT_LENGTH
         let context = '';
         for (let i = previousSentences.length - 1; i >= 0; i--) {
             const newContext = previousSentences[i] + '\n' + context;
@@ -443,14 +429,12 @@ socket.on('transcription', (data) => {
             context = newContext;
         }
         
-        // Send translation service preference with the request
         socket.emit('requestTranslation', {
             text: data.text,
             service: currentTranslationService,
             context: context.trim()
         });
     } else {
-        // Update interim transcript
         interimTranscript = data.text;
     }
     

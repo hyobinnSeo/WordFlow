@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Flow - Speech to Text</title>
+    <title>WordFlow - Speech to Text</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -12,7 +12,7 @@
 <body>
     <header class="header">
         <div class="header-content">
-            <h1 class="header-title">Voice Flow</h1>
+            <h1 class="header-title">WordFlow</h1>
         </div>
     </header>
 
@@ -111,12 +111,12 @@
                     <label for="transcription" class="text-sm font-medium text-gray-700">
                         Speech to Text with Translation
                     </label>
-                    <textarea 
+                    <div 
                         id="transcription" 
-                        readonly 
-                        placeholder="Your speech with translations will appear here..."
+                        contenteditable="false" 
+                        role="textbox"
                         aria-label="Speech transcription and translation output"
-                    ></textarea>
+                    ></div>
                 </div>
             </div>
 

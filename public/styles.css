@@ -1,29 +1,4 @@
 /* Base styles and variables */
-:root {
-  --navy-50: #f0f4f8;
-  --navy-100: #d9e2ec;
-  --navy-200: #bcccdc;
-  --navy-300: #9fb3c8;
-  --navy-400: #829ab1;
-  --navy-500: #627d98;
-  --navy-600: #486581;
-  --navy-700: #334e68;
-  --navy-800: #243b53;
-  --navy-900: #102a43;
-  
-  --gray-50: #f8fafc;
-  --gray-100: #f1f5f9;
-  --gray-200: #e2e8f0;
-  --gray-300: #cbd5e1;
-  --gray-400: #94a3b8;
-  --gray-500: #64748b;
-  --gray-600: #475569;
-  --gray-700: #334155;
-  --gray-800: #1e293b;
-  --gray-900: #0f172a;
-}
-
-/* Reset and base styles */
 * {
   margin: 0;
   padding: 0;
@@ -32,10 +7,11 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  background-color: var(--gray-100);
+  background-color: #15202b;
   min-height: 100vh;
-  color: var(--gray-800);
+  color: #ffffff;
   line-height: 1.5;
+  padding: 2rem 0;
 }
 
 /* Container styles */
@@ -43,7 +19,10 @@ body {
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 1.5rem;
+  padding: 2rem;
+  background-color: #192734;
+  border-radius: 15px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
 }
 
 /* Button styles */
@@ -62,10 +41,10 @@ body {
 
 .control-button {
   padding: 0.75rem 1.5rem;
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: 1rem;
+  font-weight: 600;
   border: none;
-  border-radius: 0.5rem;
+  border-radius: 9999px;
   cursor: pointer;
   transition: all 0.2s ease;
   display: inline-flex;
@@ -73,16 +52,21 @@ body {
   justify-content: center;
   gap: 0.5rem;
   min-width: 120px;
-}
-
-.record-button {
-  background-color: var(--navy-600);
+  background-color: #1da1f2;
   color: white;
 }
 
-.record-button:hover {
-  background-color: var(--navy-700);
+.control-button:hover {
+  background-color: #1991db;
   transform: translateY(-1px);
+}
+
+.record-button {
+  background-color: #1da1f2;
+}
+
+.record-button:hover {
+  background-color: #1991db;
 }
 
 .record-button.recording {
@@ -95,17 +79,12 @@ body {
 }
 
 .copy-button {
-  background-color: var(--navy-500);
-  color: white;
+  background-color: #253341;
+  border: 2px solid #38444d;
 }
 
 .copy-button:hover {
-  background-color: var(--navy-600);
-  transform: translateY(-1px);
-}
-
-.copy-button:active {
-  transform: translateY(0);
+  background-color: #38444d;
 }
 
 @keyframes pulse {
@@ -121,13 +100,12 @@ body {
 }
 
 #autoScrollButton {
-  background-color: var(--navy-500);
-  color: white;
+  background-color: #253341;
+  border: 2px solid #38444d;
 }
 
 #autoScrollButton:hover {
-  background-color: var(--navy-600);
-  transform: translateY(-1px);
+  background-color: #38444d;
 }
 
 /* Settings Popup Styles */
@@ -149,19 +127,20 @@ body {
 }
 
 .settings-content {
-  background-color: white;
+  background-color: #192734;
   padding: 2rem;
-  border-radius: 0.75rem;
+  border-radius: 15px;
   width: 90%;
   max-width: 500px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  border: 2px solid #38444d;
 }
 
 .settings-content h2 {
   margin-bottom: 1.5rem;
-  color: var(--navy-800);
+  color: #ffffff;
   font-size: 1.25rem;
   font-weight: 600;
 }
@@ -174,16 +153,17 @@ body {
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
-  color: var(--gray-700);
+  color: #ffffff;
 }
 
 .setting-item select {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid var(--gray-200);
-  border-radius: 0.5rem;
-  background-color: white;
-  font-size: 0.875rem;
+  border: 2px solid #38444d;
+  border-radius: 9999px;
+  background-color: #253341;
+  color: #ffffff;
+  font-size: 1rem;
 }
 
 .settings-buttons {
@@ -198,23 +178,23 @@ body {
 }
 
 #saveSettings {
-  background-color: var(--navy-600);
+  background-color: #1da1f2;
   color: white;
 }
 
 #closeSettings {
-  background-color: var(--gray-200);
-  color: var(--gray-700);
+  background-color: #253341;
+  border: 2px solid #38444d;
+  color: #ffffff;
 }
 
 #settingsButton {
-  background-color: var(--navy-500);
-  color: white;
+  background-color: #253341;
+  border: 2px solid #38444d;
 }
 
 #settingsButton:hover {
-  background-color: var(--navy-600);
-  transform: translateY(-1px);
+  background-color: #38444d;
 }
 
 /* Text areas */
@@ -232,37 +212,48 @@ body {
 }
 
 .text-container label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--gray-700);
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
 }
 
-#transcription, #translation {
+#transcription {
   width: 100%;
   height: 300px;
-  padding: 0.9rem;
-  border: 1px solid var(--gray-200);
-  border-radius: 0.75rem;
-  resize: vertical;
-  font-size: 1rem;
+  padding: 1rem;
+  border: 2px solid #38444d;
+  border-radius: 15px;
+  font-size: 1.2rem;
   line-height: 1.6;
-  background-color: white;
+  font-weight: 600;
+  background-color: #253341;
   transition: border-color 0.2s ease;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   letter-spacing: -0.011em;
+  white-space: pre-wrap;
+  color: #ffffff;
+  overflow-y: auto;
 }
 
-#transcription:focus, #translation:focus {
-  outline: none;
-  border-color: var(--navy-400);
-  box-shadow: 0 0 0 3px rgba(98, 125, 152, 0.1);
+.transcript-line {
+  color: #ffffff;
+  margin-bottom: 0.25rem;
+}
+
+.translation-line {
+  color: #1da1f2;
+  margin-bottom: 0.5rem;
+  padding-left: 1rem;
+}
+
+.spacer {
+  height: 1rem;
 }
 
 /* Header styles */
 .header {
-  background-color: white;
-  border-bottom: 1px solid var(--gray-200);
+  background-color: #192734;
   padding: 1rem 0;
   margin-bottom: 1rem;
 }
@@ -273,13 +264,13 @@ body {
   padding: 0 1.5rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
 }
 
 .header-title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: var(--navy-800);
+  color: #ffffff;
 }
 
 /* Form elements */
@@ -288,9 +279,11 @@ input[type="number"],
 select {
   width: 100%;
   padding: 0.75rem 1rem;
-  border: 1px solid var(--gray-200);
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
+  border: 2px solid #38444d;
+  border-radius: 9999px;
+  font-size: 1rem;
+  background-color: #253341;
+  color: #ffffff;
   transition: all 0.2s ease;
 }
 
@@ -298,15 +291,14 @@ input[type="text"]:focus,
 input[type="number"]:focus,
 select:focus {
   outline: none;
-  border-color: var(--navy-400);
-  box-shadow: 0 0 0 3px rgba(98, 125, 152, 0.1);
+  border-color: #1da1f2;
 }
 
 /* Settings divider */
 .settings-divider {
   margin: 1.5rem 0;
   border: none;
-  border-top: 1px solid var(--gray-200);
+  border-top: 2px solid #38444d;
 }
 
 /* API Key sections */
@@ -330,18 +322,19 @@ select:focus {
 
 .verify-button {
   padding: 0.75rem 1rem;
-  background-color: var(--navy-500);
+  background-color: #1da1f2;
   color: white;
   border: none;
-  border-radius: 0.5rem;
+  border-radius: 9999px;
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: 1rem;
+  font-weight: 600;
   transition: all 0.2s ease;
   white-space: nowrap;
 }
 
 .verify-button:hover {
-  background-color: var(--navy-600);
+  background-color: #1991db;
 }
 
 .verify-button.verified {
@@ -360,94 +353,86 @@ select:focus {
 .prompt-settings textarea {
   width: 100%;
   min-height: 150px;
-  padding: 0.75rem;
-  border: 1px solid var(--gray-200);
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
+  padding: 1rem;
+  border: 2px solid #38444d;
+  border-radius: 15px;
+  font-size: 1rem;
   resize: vertical;
   font-family: monospace;
   margin-bottom: 0.5rem;
+  background-color: #253341;
+  color: #ffffff;
 }
 
 .prompt-settings textarea:focus {
   outline: none;
-  border-color: var(--navy-400);
-  box-shadow: 0 0 0 3px rgba(98, 125, 152, 0.1);
+  border-color: #1da1f2;
 }
 
 #resetPrompt {
-  background-color: var(--gray-200);
-  color: var(--gray-700);
+  background-color: #253341;
+  color: #ffffff;
   padding: 0.5rem 1rem;
-  font-size: 0.75rem;
+  font-size: 1rem;
   min-width: auto;
+  border: 2px solid #38444d;
 }
 
 #resetPrompt:hover {
-  background-color: var(--gray-300);
+  background-color: #38444d;
 }
 
 /* Google Cloud section */
 .google-cloud-section {
   margin-top: 2rem;
   padding-top: 1rem;
-  border-top: 1px solid var(--gray-200);
+  border-top: 2px solid #38444d;
 }
 
 .google-cloud-section h3 {
   margin-bottom: 1rem;
-  color: var(--navy-800);
-  font-size: 1.1rem;
+  color: #ffffff;
+  font-size: 1.2rem;
   font-weight: 600;
-}
-
-.google-cloud-section .api-key-item {
-  margin-bottom: 1rem;
 }
 
 .google-cloud-section textarea {
   width: 100%;
   min-height: 100px;
-  padding: 0.75rem;
-  border: 1px solid var(--gray-200);
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
+  padding: 1rem;
+  border: 2px solid #38444d;
+  border-radius: 15px;
+  font-size: 1rem;
   resize: vertical;
   font-family: monospace;
+  background-color: #253341;
+  color: #ffffff;
 }
 
 .google-cloud-section textarea:focus {
   outline: none;
-  border-color: var(--navy-400);
-  box-shadow: 0 0 0 3px rgba(98, 125, 152, 0.1);
+  border-color: #1da1f2;
 }
 
 .gcp-verify {
   margin-top: 0.5rem;
 }
 
-/* Settings headings */
-.settings-content h3 {
-  margin: 1rem 0;
-  color: var(--navy-800);
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
 /* Password input styling */
 input[type="password"] {
   width: 100%;
   padding: 0.75rem 1rem;
-  border: 1px solid var(--gray-200);
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
+  border: 2px solid #38444d;
+  border-radius: 9999px;
+  font-size: 1rem;
+  background-color: #253341;
+  color: #ffffff;
   transition: all 0.2s ease;
 }
 
 input[type="password"]:focus {
   outline: none;
-  border-color: var(--navy-400);
-  box-shadow: 0 0 0 3px rgba(98, 125, 152, 0.1);
+  border-color: #1da1f2;
 }
 
 /* Responsive design */
@@ -477,14 +462,14 @@ input[type="password"]:focus {
 }
 
 /* Utility classes */
-.text-sm { font-size: 0.875rem; }
-.text-lg { font-size: 1.125rem; }
+.text-sm { font-size: 1rem; }
+.text-lg { font-size: 1.25rem; }
 .font-medium { font-weight: 500; }
 .font-semibold { font-weight: 600; }
-.text-gray-500 { color: var(--gray-500); }
-.text-gray-700 { color: var(--gray-700); }
-.text-navy-600 { color: var(--navy-600); }
-.bg-white { background-color: white; }
-.rounded-lg { border-radius: 0.5rem; }
-.shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
-.shadow-md { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+.text-gray-500 { color: #8899a6; }
+.text-gray-700 { color: #ffffff; }
+.text-navy-600 { color: #1da1f2; }
+.bg-white { background-color: #192734; }
+.rounded-lg { border-radius: 15px; }
+.shadow-sm { box-shadow: 0 0 20px rgba(0, 0, 0, 0.3); }
+.shadow-md { box-shadow: 0 0 20px rgba(0, 0, 0, 0.3); }

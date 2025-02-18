@@ -64,6 +64,24 @@
                         </div>
                     </div>
 
+                    <hr class="settings-divider">
+
+                    <div class="prompt-settings">
+                        <h3>AI Prompts</h3>
+                        <div class="setting-item">
+                            <label for="promptModel">Select Model:</label>
+                            <select id="promptModel">
+                                <option value="gemini">Gemini</option>
+                                <option value="openai">OpenAI</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label for="promptText">Prompt:</label>
+                            <textarea id="promptText" placeholder="Enter prompt text..."></textarea>
+                            <button id="resetPrompt" class="control-button">Reset to Default</button>
+                        </div>
+                    </div>
+
                     <div class="google-cloud-section">
                         <h3>Google Cloud</h3>
                         <div class="api-key-item">

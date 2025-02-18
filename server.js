@@ -78,17 +78,9 @@ async function translateWithGoogle(text) {
     }
 }
 
-// Translation function using Gemini Flash API
-async function translateWithGeminiFlash(text, context = '') {
-    try {
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-preview-02-05" });
-        
-        // Add delay between requests to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const prompt = `[Instructions]
-
-You are a professional translator specializing in English to Korean translation. Your task is to translate the provided English text to Korean, focusing only on the given text. Provide a natural, conversational Korean translation.
+// Default prompts
+const DEFAULT_PROMPTS = {
+    gemini: `You are a professional translator specializing in English to Korean translation. Your task is to translate the provided English text to Korean, focusing only on the given text.
 
 The input text may contain:
 Spelling errors or homophones
@@ -102,7 +94,38 @@ Direct Korean translation
 [Alternative: {Your suggested alternative Korean translation based on the context}]
 The most common issue: If the sentence fragment appears to be part of a previous sentence:
 1. Keep track of all fragments to reconstruct the complete sentence.
-2. When the final fragment is detected, provide: A complete, natural translation of the entire reconstructed sentence.
+2. When the final fragment is detected, provide: A complete, natural translation of the entire reconstructed sentence.`,
+    openai: `You are a professional translator specializing in English to Korean translation. Your task is to translate the provided English text to Korean, focusing only on the given text.
+
+The input text may contain:
+Spelling errors or homophones
+Grammatically incomplete fragments
+Ambiguous meanings
+
+- If there are no issues, please provide only the Korean translation without any explanations or commentary.
+- If issues are detected, use this format:
+Direct Korean translation
+[Issue: {Brief description of the potential problem in Korean}]
+[Alternative: {Your suggested alternative Korean translation based on the context}]
+The most common issue: If the sentence fragment appears to be part of a previous sentence:
+1. Keep track of all fragments to reconstruct the complete sentence.
+2. When the final fragment is detected, provide: A complete, natural translation of the entire reconstructed sentence.`
+};
+
+// Current prompts
+let currentPrompts = { ...DEFAULT_PROMPTS };
+
+// Translation function using Gemini Flash API
+async function translateWithGeminiFlash(text, context = '', customPrompt = '') {
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-preview-02-05" });
+        
+        // Add delay between requests to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const prompt = `[Instructions]
+
+${customPrompt || currentPrompts.gemini}
 
 Context:
 ${context.slice(0, 1000)}
@@ -132,7 +155,7 @@ Text to be translated:
 }
 
 // Translation function using GPT-4o-mini
-async function translateWithGPT(text, context = '') {
+async function translateWithGPT(text, context = '', customPrompt = '') {
     try {
         const response = await openai.chat.completions.create({
             model: "gpt-4o-mini",
@@ -141,36 +164,7 @@ async function translateWithGPT(text, context = '') {
                     role: "system",
                     content: `[Instructions]
 
-You are a professional translator specializing in English to Korean translation. Your task is to translate the provided English text to Korean, focusing only on the given text. Provide a natural, conversational Korean translation.
-
-The input text may contain:
-Spelling errors or homophones
-Grammatically incomplete fragments
-Ambiguous meanings
-
-- If there are no issues, please provide only the Korean translation without any explanations or commentary.
-- If issues are detected, use this format:
-Direct Korean translation
-[Issue: {Brief description of the potential problem in Korean}]
-[Alternative: {Your suggested alternative Korean translation based on the context}]
-If the sentence fragment appears to be part of a previous sentence:
-1. Keep track of all fragments to reconstruct the complete sentence.
-2. When the final fragment is detected, provide: A complete, natural translation of the entire reconstructed sentence.
-
-Example:
-
-Context:
-In the long history of the world.
-Only a few Generations.
-Have been granted the role.
-Of Defending freedom.
-
-Input: In its hour of Maximum Danger.
-
-Your Response:
-최대 위험에 처한 때.
-[Issue: 이 문구는 이전 문장의 일부로 보입니다. 맥락에 따른 전체 문장을 제공합니다.]
-[Alternative: 세계 역사를 통틀어 가장 위태로운 순간에 자유를 수호하는 막중한 임무를 부여받은 세대는 극히 일부에 불과합니다.]`
+${customPrompt || currentPrompts.openai}`
                 },
                 {
                     role: "user",
@@ -435,8 +429,11 @@ io.on('connection', (socket) => {
         gcp: null
     };
 
-    socket.on('updateApiKeys', (keys) => {
-        apiKeys = { ...apiKeys, ...keys };
+    socket.on('updateApiKeys', (data) => {
+        apiKeys = { ...apiKeys, ...data };
+        if (data.prompts) {
+            currentPrompts = { ...currentPrompts, ...data.prompts };
+        }
     });
 
     socket.on('requestTranslation', async (data) => {
@@ -453,48 +450,13 @@ io.on('connection', (socket) => {
                     if (!genAI) {
                         throw new Error('Gemini API not initialized. Please verify your Gemini API key in settings.');
                     }
-                    translatedText = await translateWithGeminiFlash(data.text, data.context || '');
+                    translatedText = await translateWithGeminiFlash(data.text, data.context || '', currentPrompts.gemini);
                     break;
                 case 'gpt-mini':
                     if (!openai) {
                         throw new Error('OpenAI API not initialized. Please verify your OpenAI API key in settings.');
                     }
-                    const response = await openai.chat.completions.create({
-                        model: "gpt-3.5-turbo",
-                        messages: [
-                            {
-                                role: "system",
-                                content: `[Instructions]
-
-You are a professional translator specializing in English to Korean translation. Your task is to translate the provided English text to Korean, focusing only on the given text.
-
-The input text may contain:
-Spelling errors or homophones
-Grammatically incomplete fragments
-Ambiguous meanings
-
-- If there are no issues, please provide only the Korean translation without any explanations or commentary.
-- If issues are detected, use this format:
-{Direct Korean translation}
-[Issue: {Brief description of the potential problem in Korean}]
-[Alternative: {Your suggested alternative Korean translation based on the context}]
-The most common issue: If the sentence fragment appears to be part of a previous sentence:
-1. Keep track of all fragments to reconstruct the complete sentence.
-2. When the final fragment is detected, provide: A complete, natural translation of the entire reconstructed sentence.
-NOTE: Provide a natural, conversational Korean translation.`
-                            },
-                            {
-                                role: "user",
-                                content: `Context:
-${data.context ? data.context.slice(0, 1000) : ''}
-
-Text to be translated:
-${data.text}`
-                            }
-                        ],
-                        temperature: 0.3
-                    });
-                    translatedText = response.choices[0].message.content.trim();
+                    translatedText = await translateWithGPT(data.text, data.context || '', currentPrompts.openai);
                     break;
                 default:
                     throw new Error('Invalid translation service selected');

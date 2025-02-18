@@ -15,9 +15,74 @@ const closeSettings = document.getElementById('closeSettings');
 const transcriptionArea = document.getElementById('transcription');
 const copyTranscriptionButton = document.getElementById('copyTranscriptionButton');
 
+// Default prompts
+const DEFAULT_PROMPTS = {
+    gemini: `You are a professional translator specializing in English to Korean translation. Your task is to translate the provided English text to Korean, focusing only on the given text.
+
+The input text may contain:
+Spelling errors or homophones
+Grammatically incomplete fragments
+Ambiguous meanings
+
+- If there are no issues, please provide only the Korean translation without any explanations or commentary.
+- If issues are detected, use this format:
+Direct Korean translation
+[Issue: {Brief description of the potential problem in Korean}]
+[Alternative: {Your suggested alternative Korean translation based on the context}]
+The most common issue: If the sentence fragment appears to be part of a previous sentence:
+1. Keep track of all fragments to reconstruct the complete sentence.
+2. When the final fragment is detected, provide: A complete, natural translation of the entire reconstructed sentence.`,
+    openai: `You are a professional translator specializing in English to Korean translation. Your task is to translate the provided English text to Korean, focusing only on the given text.
+
+The input text may contain:
+Spelling errors or homophones
+Grammatically incomplete fragments
+Ambiguous meanings
+
+- If there are no issues, please provide only the Korean translation without any explanations or commentary.
+- If issues are detected, use this format:
+Direct Korean translation
+[Issue: {Brief description of the potential problem in Korean}]
+[Alternative: {Your suggested alternative Korean translation based on the context}]
+The most common issue: If the sentence fragment appears to be part of a previous sentence:
+1. Keep track of all fragments to reconstruct the complete sentence.
+2. When the final fragment is detected, provide: A complete, natural translation of the entire reconstructed sentence.`
+};
+
 // Settings management
 let currentTranslationService = localStorage.getItem('translationService') || 'google';
 translationService.value = currentTranslationService;
+
+// Prompt elements
+const promptModel = document.getElementById('promptModel');
+const promptText = document.getElementById('promptText');
+const resetPrompt = document.getElementById('resetPrompt');
+
+// Load saved prompts or use defaults
+let currentPrompts = {
+    gemini: localStorage.getItem('geminiPrompt') || DEFAULT_PROMPTS.gemini,
+    openai: localStorage.getItem('openaiPrompt') || DEFAULT_PROMPTS.openai
+};
+
+// Initialize prompt text with current model's prompt
+promptText.value = currentPrompts[promptModel.value];
+
+// Handle prompt model change
+promptModel.addEventListener('change', () => {
+    promptText.value = currentPrompts[promptModel.value];
+});
+
+// Handle prompt text change
+promptText.addEventListener('input', () => {
+    currentPrompts[promptModel.value] = promptText.value;
+});
+
+// Handle reset prompt
+resetPrompt.addEventListener('click', () => {
+    const model = promptModel.value;
+    currentPrompts[model] = DEFAULT_PROMPTS[model];
+    promptText.value = DEFAULT_PROMPTS[model];
+});
 
 // API key elements
 const geminiApiKey = document.getElementById('geminiApiKey');
@@ -127,14 +192,16 @@ saveSettings.addEventListener('click', () => {
     currentTranslationService = translationService.value;
     localStorage.setItem('translationService', currentTranslationService);
     
-    // Save API keys
+    // Save settings
     localStorage.setItem('geminiApiKey', geminiApiKey.value);
     localStorage.setItem('openaiApiKey', openaiApiKey.value);
     localStorage.setItem('gcpProjectId', gcpProjectId.value);
     localStorage.setItem('gcpClientEmail', gcpClientEmail.value);
     localStorage.setItem('gcpPrivateKey', gcpPrivateKey.value);
+    localStorage.setItem('geminiPrompt', currentPrompts.gemini);
+    localStorage.setItem('openaiPrompt', currentPrompts.openai);
     
-    // Update socket connection with new API keys
+    // Update socket connection with new settings
     socket.emit('updateApiKeys', {
         gemini: geminiApiKey.value,
         openai: openaiApiKey.value,
@@ -142,7 +209,8 @@ saveSettings.addEventListener('click', () => {
             projectId: gcpProjectId.value,
             clientEmail: gcpClientEmail.value,
             privateKey: gcpPrivateKey.value
-        }
+        },
+        prompts: currentPrompts
     });
     
     settingsPopup.classList.add('hidden');

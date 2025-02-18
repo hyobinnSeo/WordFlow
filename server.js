@@ -69,7 +69,7 @@ initializeClients();
 
 // Default prompts
 const DEFAULT_PROMPTS = {
-    gemini: `You are a professional translator specializing in translation between the selected languages. Your task is to translate the provided text from the source language to the target language, focusing only on the given text.
+    gemini: `You are a professional translator who specializes in natural and fluent translations. Your task is to translate the given text from source language to target language.
 
 The input text may contain:
 Spelling errors or homophones
@@ -79,12 +79,13 @@ Ambiguous meanings
 - If there are no issues, please provide only the translation without any explanations or commentary.
 - If issues are detected, use this format:
 Direct translation
-[Issue: Brief description of the potential problem]
-[Alternative: Your suggested alternative translation based on the context]
-The most common issue: If the sentence fragment appears to be part of a previous sentence:
-1. Keep track of all fragments to reconstruct the complete sentence.
-2. When the final fragment is detected, provide: A complete, natural translation of the entire reconstructed sentence.`,
-    openai: `You are a professional translator specializing in translation between the selected languages. Your task is to translate the provided text from the source language to the target language, focusing only on the given text.
+[Issue: Brief description of the potential problem in target language]
+[Alternative: Your suggested alternative target language translation based on the context]
+- If the given sentence appears to be part of a previous sentence, use this format:
+Direct translation
+[Completed source language sentence: ]
+[Completed target language translation: ]`,
+    openai: `You are a professional translator who specializes in natural and fluent translations. Your task is to translate the given text from source language to target language.
 
 The input text may contain:
 Spelling errors or homophones
@@ -94,11 +95,12 @@ Ambiguous meanings
 - If there are no issues, please provide only the translation without any explanations or commentary.
 - If issues are detected, use this format:
 Direct translation
-[Issue: Brief description of the potential problem]
-[Alternative: Your suggested alternative translation based on the context]
-The most common issue: If the sentence fragment appears to be part of a previous sentence:
-1. Keep track of all fragments to reconstruct the complete sentence.
-2. When the final fragment is detected, provide: A complete, natural translation of the entire reconstructed sentence.`
+[Issue: Brief description of the potential problem in target language]
+[Alternative: Your suggested alternative target language translation based on the context]
+- If the given sentence appears to be part of a previous sentence, use this format:
+Direct translation
+[Completed source language sentence: ]
+[Completed target language translation: ]`
 };
 
 // Current prompts
@@ -114,10 +116,7 @@ async function translateWithGeminiFlash(text, context = '', customPrompt = '', s
         
         const prompt = `[Instructions]
 
-${customPrompt || currentPrompts.gemini}
-
-Source Language: ${sourceLanguage}
-Target Language: ${targetLanguage}
+${(customPrompt || currentPrompts.gemini).replace(/source language/g, sourceLanguage).replace(/target language/g, targetLanguage)}
 
 Context:
 ${context.slice(0, 1000)}
@@ -156,10 +155,7 @@ async function translateWithGPT(text, context = '', customPrompt = '', sourceLan
                     role: "system",
                     content: `[Instructions]
 
-${customPrompt || currentPrompts.openai}
-
-Source Language: ${sourceLanguage}
-Target Language: ${targetLanguage}`
+${(customPrompt || currentPrompts.openai).replace(/source language/g, sourceLanguage).replace(/target language/g, targetLanguage)}`
                 },
                 {
                     role: "user",

@@ -234,6 +234,7 @@ body {
   white-space: pre-wrap;
   color: #ffffff;
   overflow-y: auto;
+  resize: vertical;
 }
 
 .transcript-line {

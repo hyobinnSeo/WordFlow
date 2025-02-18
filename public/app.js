@@ -19,7 +19,7 @@ const copyTranscriptionButton = document.getElementById('copyTranscriptionButton
 
 // Default prompts
 const DEFAULT_PROMPTS = {
-    gemini: `You are a professional translator specializing in translation between the selected languages. Your task is to translate the provided text from the source language to the target language, focusing only on the given text.
+    gemini: `You are a professional translator who specializes in natural and fluent translations. Your task is to translate the given text from source language to target language.
 
 The input text may contain:
 Spelling errors or homophones
@@ -29,12 +29,13 @@ Ambiguous meanings
 - If there are no issues, please provide only the translation without any explanations or commentary.
 - If issues are detected, use this format:
 Direct translation
-[Issue: Brief description of the potential problem]
-[Alternative: Your suggested alternative translation based on the context]
-The most common issue: If the sentence fragment appears to be part of a previous sentence:
-1. Keep track of all fragments to reconstruct the complete sentence.
-2. When the final fragment is detected, provide: A complete, natural translation of the entire reconstructed sentence.`,
-    openai: `You are a professional translator specializing in translation between the selected languages. Your task is to translate the provided text from the source language to the target language, focusing only on the given text.
+[Issue: Brief description of the potential problem in target language]
+[Alternative: Your suggested alternative target language translation based on the context]
+- If the given sentence appears to be part of a previous sentence, use this format:
+Direct translation
+[Completed source language sentence: ]
+[Completed target language translation: ]`,
+    openai: `You are a professional translator who specializes in natural and fluent translations. Your task is to translate the given text from source language to target language.
 
 The input text may contain:
 Spelling errors or homophones
@@ -44,11 +45,12 @@ Ambiguous meanings
 - If there are no issues, please provide only the translation without any explanations or commentary.
 - If issues are detected, use this format:
 Direct translation
-[Issue: Brief description of the potential problem]
-[Alternative: Your suggested alternative translation based on the context]
-The most common issue: If the sentence fragment appears to be part of a previous sentence:
-1. Keep track of all fragments to reconstruct the complete sentence.
-2. When the final fragment is detected, provide: A complete, natural translation of the entire reconstructed sentence.`
+[Issue: Brief description of the potential problem in target language]
+[Alternative: Your suggested alternative target language translation based on the context]
+- If the given sentence appears to be part of a previous sentence, use this format:
+Direct translation
+[Completed source language sentence: ]
+[Completed target language translation: ]`
 };
 
 // Settings management
@@ -204,7 +206,7 @@ saveSettings.addEventListener('click', () => {
     localStorage.setItem('sourceLanguage', currentSourceLanguage);
     localStorage.setItem('targetLanguage', currentTargetLanguage);
     
-    // Save settings
+// Save settings
     localStorage.setItem('geminiApiKey', geminiApiKey.value);
     localStorage.setItem('openaiApiKey', openaiApiKey.value);
     localStorage.setItem('gcpProjectId', gcpProjectId.value);
@@ -212,6 +214,12 @@ saveSettings.addEventListener('click', () => {
     localStorage.setItem('gcpPrivateKey', gcpPrivateKey.value);
     localStorage.setItem('geminiPrompt', currentPrompts.gemini);
     localStorage.setItem('openaiPrompt', currentPrompts.openai);
+    
+    // Replace language placeholders in prompts
+    const processedPrompts = {
+        gemini: currentPrompts.gemini.replace(/source language/g, currentSourceLanguage).replace(/target language/g, currentTargetLanguage),
+        openai: currentPrompts.openai.replace(/source language/g, currentSourceLanguage).replace(/target language/g, currentTargetLanguage)
+    };
     
     // Update socket connection with new settings
     socket.emit('updateApiKeys', {
@@ -222,7 +230,7 @@ saveSettings.addEventListener('click', () => {
             clientEmail: gcpClientEmail.value,
             privateKey: gcpPrivateKey.value
         },
-        prompts: currentPrompts,
+        prompts: processedPrompts,
         sourceLanguage: currentSourceLanguage,
         targetLanguage: currentTargetLanguage
     });
@@ -485,10 +493,16 @@ socket.on('connect', () => {
     console.log('Connected to server');
     recordButton.disabled = false;
     
-    // Send saved language settings on connection
+    // Send saved language settings and processed prompts on connection
+    const processedPrompts = {
+        gemini: currentPrompts.gemini.replace(/source language/g, currentSourceLanguage).replace(/target language/g, currentTargetLanguage),
+        openai: currentPrompts.openai.replace(/source language/g, currentSourceLanguage).replace(/target language/g, currentTargetLanguage)
+    };
+    
     socket.emit('updateApiKeys', {
         sourceLanguage: currentSourceLanguage,
-        targetLanguage: currentTargetLanguage
+        targetLanguage: currentTargetLanguage,
+        prompts: processedPrompts
     });
 });
 

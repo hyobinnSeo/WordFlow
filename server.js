@@ -90,8 +90,8 @@ Ambiguous meanings
 - If there are no issues, please provide only the Korean translation without any explanations or commentary.
 - If issues are detected, use this format:
 Direct Korean translation
-[Issue: {Brief description of the potential problem in Korean}]
-[Alternative: {Your suggested alternative Korean translation based on the context}]
+[Issue: Brief description of the potential problem in Korean]
+[Alternative: Your suggested alternative Korean translation based on the context]
 The most common issue: If the sentence fragment appears to be part of a previous sentence:
 1. Keep track of all fragments to reconstruct the complete sentence.
 2. When the final fragment is detected, provide: A complete, natural translation of the entire reconstructed sentence.`,
@@ -105,8 +105,8 @@ Ambiguous meanings
 - If there are no issues, please provide only the Korean translation without any explanations or commentary.
 - If issues are detected, use this format:
 Direct Korean translation
-[Issue: {Brief description of the potential problem in Korean}]
-[Alternative: {Your suggested alternative Korean translation based on the context}]
+[Issue: Brief description of the potential problem in Korean]
+[Alternative: Your suggested alternative Korean translation based on the context]
 The most common issue: If the sentence fragment appears to be part of a previous sentence:
 1. Keep track of all fragments to reconstruct the complete sentence.
 2. When the final fragment is detected, provide: A complete, natural translation of the entire reconstructed sentence.`

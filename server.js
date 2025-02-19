@@ -109,9 +109,9 @@ Direct translation
 let currentPrompts = { ...DEFAULT_PROMPTS };
 
 // Translation function using Gemini Flash API
-async function translateWithGeminiFlash(text, context = '', customPrompt = '', sourceLanguage = 'en', targetLanguage = 'ko') {
+async function translateWithGeminiFlash(text, context = '', customPrompt = '', sourceLanguage = 'English', targetLanguage = 'Korean') {
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-preview-02-05" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
         
         // Add delay between requests to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -124,12 +124,12 @@ Context:
 ${context.slice(0, 1000)}
 
 Text to be translated:
-"${text}"`;
+${text}`;
         
         try {
             const result = await model.generateContent(prompt);
             const response = await result.response;
-            const translation = response.text().trim();
+            const translation = response.text().trim().replace(/^"(.*)"$/, '$1');
             return translation;
         } catch (error) {
             if (error.message.includes('429') || error.message.includes('Too Many Requests')) {
@@ -148,7 +148,7 @@ Text to be translated:
 }
 
 // Translation function using GPT-4o-mini
-async function translateWithGPT(text, context = '', customPrompt = '', sourceLanguage = 'en', targetLanguage = 'ko') {
+async function translateWithGPT(text, context = '', customPrompt = '', sourceLanguage = 'English', targetLanguage = 'Korean') {
     try {
         const response = await openai.chat.completions.create({
             model: "gpt-4o-mini",
@@ -171,7 +171,7 @@ ${text}`
             temperature: 0.3
         });
 
-        return response.choices[0].message.content.trim();
+        return response.choices[0].message.content.trim().replace(/^"(.*)"$/, '$1');
     } catch (error) {
         console.error('GPT Translation error:', error);
         throw error;
@@ -458,8 +458,8 @@ io.on('connection', (socket) => {
                         data.text, 
                         data.context || '', 
                         currentPrompts.gemini,
-                        data.sourceLanguage || 'en',
-                        data.targetLanguage || 'ko'
+                        data.sourceLanguage || 'English',
+                        data.targetLanguage || 'Korean'
                     );
                     break;
                 case 'gpt-mini':
@@ -470,8 +470,8 @@ io.on('connection', (socket) => {
                         data.text, 
                         data.context || '', 
                         currentPrompts.openai,
-                        data.sourceLanguage || 'en',
-                        data.targetLanguage || 'ko'
+                        data.sourceLanguage || 'English',
+                        data.targetLanguage || 'Korean'
                     );
                     break;
                 default:

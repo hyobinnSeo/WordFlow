@@ -57,8 +57,8 @@ Direct translation
 
 // Settings management
 let currentTranslationService = localStorage.getItem('translationService') || 'google';
-let currentSourceLanguage = localStorage.getItem('sourceLanguage') || 'en';
-let currentTargetLanguage = localStorage.getItem('targetLanguage') || 'ko';
+let currentSourceLanguage = localStorage.getItem('sourceLanguage') || 'English';
+let currentTargetLanguage = localStorage.getItem('targetLanguage') || 'Korean';
 
 translationService.value = currentTranslationService;
 sourceLanguage.value = currentSourceLanguage;
@@ -417,7 +417,9 @@ function updateTranscriptionArea() {
             displayHtml += `<div class="transcript-line">${sentence}</div>`;
             const translation = translations.get(sentence);
             if (translation) {
-                displayHtml += `<div class="translation-line">→ ${translation}</div>`;
+                // Remove surrounding double quotes if they exist
+                const cleanTranslation = translation.replace(/^"(.*)"$/, '$1');
+                displayHtml += `<div class="translation-line">→ ${cleanTranslation}</div>`;
             }
             if (index < sentences.length - 1) {
                 displayHtml += '<div class="spacer"></div>';

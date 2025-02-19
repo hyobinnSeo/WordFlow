@@ -52,30 +52,30 @@ body {
   justify-content: center;
   gap: 0.5rem;
   min-width: 120px;
-  background-color: #1da1f2;
+  background-color: #49589c;
   color: white;
 }
 
 .control-button:hover {
-  background-color: #1991db;
+  background-color: #3b4579;
   transform: translateY(-1px);
 }
 
 .record-button {
-  background-color: #1da1f2;
+  background-color: #49589c;
 }
 
 .record-button:hover {
-  background-color: #1991db;
+  background-color: #3b4579;
 }
 
 .record-button.recording {
-  background-color: #ef4444;
+  background-color: #6b0d0d;
   animation: pulse 2s infinite;
 }
 
 .record-button.recording:hover {
-  background-color: #dc2626;
+  background-color: #6b0d0d;
 }
 
 .copy-button {
@@ -178,7 +178,120 @@ body {
 }
 
 #saveSettings {
-  background-color: #1da1f2;
+  background-color: #49589c;
+  color: white;
+}
+
+.record-button.recording {
+  background-color: #6b0d0d;
+  animation: pulse 2s infinite;
+}
+
+.record-button.recording:hover {
+  background-color: #6b0d0d;
+}
+
+.copy-button {
+  background-color: #253341;
+  border: 2px solid #38444d;
+}
+
+.copy-button:hover {
+  background-color: #38444d;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+#autoScrollButton {
+  background-color: #253341;
+  border: 2px solid #38444d;
+}
+
+#autoScrollButton:hover {
+  background-color: #38444d;
+}
+
+/* Settings Popup Styles */
+.settings-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.settings-popup.hidden {
+  display: none;
+}
+
+.settings-content {
+  background-color: #192734;
+  padding: 2rem;
+  border-radius: 15px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  border: 2px solid #38444d;
+}
+
+.settings-content h2 {
+  margin-bottom: 1.5rem;
+  color: #ffffff;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.setting-item {
+  margin-bottom: 1.5rem;
+}
+
+.setting-item label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+.setting-item select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #38444d;
+  border-radius: 9999px;
+  background-color: #253341;
+  color: #ffffff;
+  font-size: 1rem;
+}
+
+.settings-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.settings-buttons button {
+  min-width: 100px;
+}
+
+#saveSettings {
+  background-color: #49589c;
   color: white;
 }
 
@@ -243,7 +356,7 @@ body {
 }
 
 .translation-line {
-  color: #1da1f2;
+  color: #4d76ff;
   margin-bottom: 0.5rem;
   padding-left: 1rem;
 }
@@ -292,7 +405,7 @@ input[type="text"]:focus,
 input[type="number"]:focus,
 select:focus {
   outline: none;
-  border-color: #1da1f2;
+  border-color: #49589c;
 }
 
 /* Settings divider */
@@ -323,7 +436,7 @@ select:focus {
 
 .verify-button {
   padding: 0.75rem 1rem;
-  background-color: #1da1f2;
+  background-color: #49589c;
   color: white;
   border: none;
   border-radius: 9999px;
@@ -335,7 +448,7 @@ select:focus {
 }
 
 .verify-button:hover {
-  background-color: #1991db;
+  background-color: #3b4579;
 }
 
 .verify-button.verified {
@@ -367,7 +480,7 @@ select:focus {
 
 .prompt-settings textarea:focus {
   outline: none;
-  border-color: #1da1f2;
+  border-color: #49589c;
 }
 
 #resetPrompt {
@@ -412,7 +525,7 @@ select:focus {
 
 .google-cloud-section textarea:focus {
   outline: none;
-  border-color: #1da1f2;
+  border-color: #49589c;
 }
 
 .gcp-verify {
@@ -433,7 +546,7 @@ input[type="password"] {
 
 input[type="password"]:focus {
   outline: none;
-  border-color: #1da1f2;
+  border-color: #49589c;
 }
 
 /* Responsive design */
@@ -469,7 +582,7 @@ input[type="password"]:focus {
 .font-semibold { font-weight: 600; }
 .text-gray-500 { color: #8899a6; }
 .text-gray-700 { color: #ffffff; }
-.text-navy-600 { color: #1da1f2; }
+.text-navy-600 { color: #49589c; }
 .bg-white { background-color: #192734; }
 .rounded-lg { border-radius: 15px; }
 .shadow-sm { box-shadow: 0 0 20px rgba(0, 0, 0, 0.3); }

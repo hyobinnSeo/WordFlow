@@ -42,15 +42,16 @@ Spelling errors or homophones
 Grammatically incomplete fragments
 Ambiguous meanings
 
-- If there are no issues, please provide only the translation without any explanations or commentary.
-- If issues are detected, use this format:
+1. If issues are detected, use this format:
 Direct translation
 [Issue: Brief description of the potential problem in target language]
 [Alternative: Your suggested alternative target language translation based on the context]
-- If the given sentence appears to be part of a previous sentence, use this format:
-Direct translation
-[Completed source language sentence: ]
-[Completed target language translation: ]`
+2. If the given sentence appears to be part of a previous sentence, follow this instructions.
+- Keep track of all fragments to reconstruct the complete sentence.
+- When the final fragment is detected, use this format:
+[Issue: ]
+[Completed translation: A complete, natural target language translation of the entire reconstructed sentence]
+3. If there are no issues, no fragments, please provide only the translation without any explanations or commentary.`
 };
 
 // Settings management

@@ -81,7 +81,7 @@ Direct translation
 [Issue: Brief description of the potential problem in target language]
 [Alternative: Your suggested alternative target language translation based on the context]
 2. If the given sentence appears to be part of a previous sentence, follow this instructions.
-- Keep track of all fragments to reconstruct the complete sentence.
+- Keep track of all fragments on the history to reconstruct the complete sentence.
 - When the final fragment is detected, use this format:
 [Issue: ]
 [Completed translation: A complete, natural target language translation of the entire reconstructed sentence]
@@ -98,7 +98,7 @@ Direct translation
 [Issue: Brief description of the potential problem in target language]
 [Alternative: Your suggested alternative target language translation based on the context]
 2. If the given sentence appears to be part of a previous sentence, follow this instructions.
-- Keep track of all fragments to reconstruct the complete sentence.
+- Keep track of all fragments on the history to reconstruct the complete sentence.
 - When the final fragment is detected, use this format:
 [Issue: ]
 [Completed translation: A complete, natural target language translation of the entire reconstructed sentence]
@@ -109,7 +109,7 @@ Direct translation
 let currentPrompts = { ...DEFAULT_PROMPTS };
 
 // Translation function using Gemini Flash API
-async function translateWithGeminiFlash(text, context = '', customPrompt = '', sourceLanguage = 'English', targetLanguage = 'Korean') {
+async function translateWithGeminiFlash(text, history = '', customPrompt = '', sourceLanguage = 'English', targetLanguage = 'Korean') {
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
         
@@ -120,16 +120,16 @@ async function translateWithGeminiFlash(text, context = '', customPrompt = '', s
 
 ${(customPrompt || currentPrompts.gemini).replace(/source language/g, sourceLanguage).replace(/target language/g, targetLanguage)}
 
-Context:
-${context.slice(0, 1000)}
+History:
+${history.slice(0, 1000)}
 
 Text to be translated:
-${text}`;
+"${text}"`;
         
         try {
             const result = await model.generateContent(prompt);
             const response = await result.response;
-            const translation = response.text().trim().replace(/^"(.*)"$/, '$1');
+            const translation = response.text().trim();
             return translation;
         } catch (error) {
             if (error.message.includes('429') || error.message.includes('Too Many Requests')) {
@@ -148,7 +148,7 @@ ${text}`;
 }
 
 // Translation function using GPT-4o-mini
-async function translateWithGPT(text, context = '', customPrompt = '', sourceLanguage = 'English', targetLanguage = 'Korean') {
+async function translateWithGPT(text, history = '', customPrompt = '', sourceLanguage = 'English', targetLanguage = 'Korean') {
     try {
         const response = await openai.chat.completions.create({
             model: "gpt-4o-mini",
@@ -161,8 +161,8 @@ ${(customPrompt || currentPrompts.openai).replace(/source language/g, sourceLang
                 },
                 {
                     role: "user",
-                    content: `Context:
-${context.slice(0, 1000)}
+content: `History:
+${history.slice(0, 1000)}
 
 Text to be translated:
 ${text}`
@@ -171,7 +171,7 @@ ${text}`
             temperature: 0.3
         });
 
-        return response.choices[0].message.content.trim().replace(/^"(.*)"$/, '$1');
+        return response.choices[0].message.content.trim();
     } catch (error) {
         console.error('GPT Translation error:', error);
         throw error;
@@ -285,7 +285,7 @@ app.post('/verify-api-key', async (req, res) => {
                         private_key: formattedCredentials.private_key
                     }
                 });
-                await tempTranslate.translate("Test", 'ko');
+                await tempTranslate.translate("Test", 'Korean');
                 
                 // Ensure keys directory exists
                 const gcpKeysDir = path.join(__dirname, 'keys');
@@ -458,8 +458,8 @@ io.on('connection', (socket) => {
                         data.text, 
                         data.context || '', 
                         currentPrompts.gemini,
-                        data.sourceLanguage || 'English',
-                        data.targetLanguage || 'Korean'
+                        data.sourceLanguage || 'en',
+                        data.targetLanguage || 'ko'
                     );
                     break;
                 case 'gpt-mini':
@@ -470,8 +470,8 @@ io.on('connection', (socket) => {
                         data.text, 
                         data.context || '', 
                         currentPrompts.openai,
-                        data.sourceLanguage || 'English',
-                        data.targetLanguage || 'Korean'
+                        data.sourceLanguage || 'en',
+                        data.targetLanguage || 'ko'
                     );
                     break;
                 default:

@@ -31,7 +31,7 @@ Direct translation
 [Issue: Brief description of the potential problem in target language]
 [Alternative: Your suggested alternative target language translation based on the context]
 2. If the given sentence appears to be part of a previous sentence, follow this instructions.
-- Keep track of all fragments to reconstruct the complete sentence.
+- Keep track of all fragments on the history to reconstruct the complete sentence.
 - When the final fragment is detected, use this format:
 [Issue: ]
 [Completed translation: A complete, natural target language translation of the entire reconstructed sentence]
@@ -48,7 +48,7 @@ Direct translation
 [Issue: Brief description of the potential problem in target language]
 [Alternative: Your suggested alternative target language translation based on the context]
 2. If the given sentence appears to be part of a previous sentence, follow this instructions.
-- Keep track of all fragments to reconstruct the complete sentence.
+- Keep track of all fragments on the history to reconstruct the complete sentence.
 - When the final fragment is detected, use this format:
 [Issue: ]
 [Completed translation: A complete, natural target language translation of the entire reconstructed sentence]
@@ -446,19 +446,19 @@ socket.on('transcription', (data) => {
         
         previousSentences.push(data.text);
         
-        let context = '';
+        let history = '';
         for (let i = previousSentences.length - 1; i >= 0; i--) {
-            const newContext = previousSentences[i] + '\n' + context;
-            if (newContext.length > MAX_CONTEXT_LENGTH) {
+            const newHistory = previousSentences[i] + '\n' + history;
+            if (newHistory.length > MAX_CONTEXT_LENGTH) {
                 break;
             }
-            context = newContext;
+            history = newHistory;
         }
         
         socket.emit('requestTranslation', {
             text: data.text,
             service: currentTranslationService,
-            context: context.trim(),
+            context: history.trim(),
             sourceLanguage: currentSourceLanguage,
             targetLanguage: currentTargetLanguage
         });

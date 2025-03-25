@@ -25,7 +25,7 @@ const loadApiKeys = () => {
         return keys;
     } catch (error) {
         console.error('Error loading API keys:', error);
-        return { openai: null, gemini: null, gcp: null };
+        return { openai: null, gemini: null };
     }
 };
 
@@ -285,7 +285,7 @@ app.post('/verify-api-key', async (req, res) => {
                         private_key: formattedCredentials.private_key
                     }
                 });
-                await tempTranslate.translate("Test", 'Korean');
+                await tempTranslate.translate("Test", 'ko');
                 
                 // Ensure keys directory exists
                 const gcpKeysDir = path.join(__dirname, 'keys');
@@ -422,8 +422,7 @@ io.on('connection', (socket) => {
     // Store API keys
     let apiKeys = {
         openai: null,
-        gemini: null,
-        gcp: null
+        gemini: null
     };
 
     socket.on('updateApiKeys', (data) => {

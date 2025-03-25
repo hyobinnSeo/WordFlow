@@ -5,27 +5,29 @@ service_account: wordflow-app@wordflow-0.iam.gserviceaccount.com
 
 instance_class: F1
 
-automatic_scaling:
-  target_cpu_utilization: 0.65
-  min_instances: 1
-  max_instances: 10
-
 env_variables:
-  PORT: 8080
-  GEMINI_API_KEY: ${GEMINI_API_KEY}
-  OPENAI_API_KEY: ${OPENAI_API_KEY}
-  GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS}
+  PORT: "8080"
+  NODE_ENV: "production"
+  # Optional API keys - will be set through settings UI
+  GEMINI_API_KEY: ""
+  OPENAI_API_KEY: ""
+  GOOGLE_APPLICATION_CREDENTIALS: ""
 
 handlers:
-- url: /socket.io/
+- url: /socket.io/.*
   secure: always
-  redirect_http_response_code: 301
   script: auto
 
 - url: /.*
   secure: always
-  redirect_http_response_code: 301
   script: auto
 
 network:
   session_affinity: true
+
+automatic_scaling:
+  target_cpu_utilization: 0.65
+  min_instances: 1
+  max_instances: 10
+  target_throughput_utilization: 0.6
+  max_concurrent_requests: 80

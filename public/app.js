@@ -1,8 +1,44 @@
 // Initialize socket connection with explicit configuration
-const socket = io({
-    transports: ['websocket', 'polling'],
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000
+const socket = io(window.location.origin, {
+    path: '/socket.io',
+    transports: ['polling'], // Use only polling
+    reconnectionAttempts: 10,
+    reconnectionDelay: 2000,
+    reconnectionDelayMax: 10000,
+    timeout: 20000,
+    secure: window.location.protocol === 'https:',
+    rejectUnauthorized: false,
+    withCredentials: true,
+    forceNew: true,
+    autoConnect: true,
+    upgrade: false // Disable transport upgrades
+});
+
+// Log connection status
+socket.io.on("ping", () => {
+    console.log('Socket.IO ping');
+});
+
+socket.io.on("pong", (latency) => {
+    console.log('Socket.IO pong, latency:', latency, 'ms');
+});
+
+socket.on('connect', () => {
+    console.log('Connected to server with transport:', socket.io.engine.transport.name);
+});
+
+// Debug connection issues
+socket.io.on("error", (error) => {
+    console.error('Socket.IO error:', error);
+});
+
+socket.io.on("reconnect_attempt", (attempt) => {
+    console.log('Reconnection attempt:', attempt);
+});
+
+socket.io.on("reconnect_failed", () => {
+    console.error('Failed to reconnect');
+    alert('Failed to connect to server. Please refresh the page.');
 });
 
 const recordButton = document.getElementById('recordButton');

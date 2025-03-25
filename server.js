@@ -4,8 +4,54 @@ const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http, {
     cors: {
-        origin: "http://localhost:3000",
-        methods: ["GET", "POST"]
+        origin: process.env.NODE_ENV === 'production' 
+            ? '*'  // Allow all origins in production
+            : "http://localhost:3000",
+        methods: ["GET", "POST", "OPTIONS"],
+        credentials: true,
+        allowedHeaders: ["Content-Type", "Authorization"]
+    },
+    allowEIO3: true, // Enable compatibility mode
+    pingTimeout: 60000,
+    pingInterval: 25000,
+    transports: ['polling'], // Use only polling in production
+    allowUpgrades: false, // Disable transport upgrades
+    perMessageDeflate: false,
+    httpCompression: true,
+    maxHttpBufferSize: 1e8, // 100 MB
+    connectTimeout: 45000
+});
+
+// Log transport type on connection
+io.engine.on("connection", (socket) => {
+    console.log('New connection with transport:', socket.transport.name);
+});
+
+// Configure Socket.IO error handling
+io.engine.on('connection_error', (err) => {
+    console.error('Connection error:', err);
+});
+
+io.engine.on('transport_error', (err) => {
+    console.error('Transport error:', err);
+});
+
+// Configure Socket.IO for Google Cloud proxy
+io.engine.on("initial_headers", (headers, req) => {
+    if (process.env.NODE_ENV === 'production') {
+        headers["Access-Control-Allow-Credentials"] = "true";
+        if (req.headers.origin) {
+            headers["Access-Control-Allow-Origin"] = req.headers.origin;
+        }
+    }
+});
+
+io.engine.on("headers", (headers, req) => {
+    if (process.env.NODE_ENV === 'production') {
+        headers["Access-Control-Allow-Credentials"] = "true";
+        if (req.headers.origin) {
+            headers["Access-Control-Allow-Origin"] = req.headers.origin;
+        }
     }
 });
 const speech = require('@google-cloud/speech');
@@ -34,31 +80,66 @@ let openai = null;
 // Function to initialize clients with verified keys
 const initializeClients = () => {
     try {
-        const apiKeys = loadApiKeys();
-        
-        // Initialize Gemini API if key exists
-        if (apiKeys.gemini) {
-            genAI = new GoogleGenerativeAI(apiKeys.gemini);
-        }
-
-        // Initialize OpenAI API if key exists
-        if (apiKeys.openai) {
-            openai = new OpenAI({ apiKey: apiKeys.openai });
-        }
-        
         // Initialize Google Cloud clients if credentials exist
         if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-            client = new speech.SpeechClient({
-                credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS)
-            });
-            translate = new Translate({
-                credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS)
-            });
+            try {
+                const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS);
+                
+                if (credentials.client_email && credentials.private_key && credentials.project_id) {
+                    // Initialize Speech-to-Text client
+                    client = new speech.SpeechClient({
+                        credentials: {
+                            client_email: credentials.client_email,
+                            private_key: credentials.private_key
+                        },
+                        projectId: credentials.project_id
+                    });
+
+                    // Initialize Translation client
+                    translate = new Translate({
+                        credentials: {
+                            client_email: credentials.client_email,
+                            private_key: credentials.private_key
+                        },
+                        projectId: credentials.project_id
+                    });
+
+                    console.log('Successfully initialized Google Cloud clients with project:', credentials.project_id);
+                } else {
+                    console.log('Incomplete Google Cloud credentials. Speech-to-Text and Translation services will be unavailable.');
+                }
+            } catch (error) {
+                console.error('Error parsing Google Cloud credentials:', error);
+                console.log('Speech-to-Text and Translation services will be unavailable.');
+            }
+        } else {
+            console.log('No Google Cloud credentials found. Speech-to-Text and Translation services will be unavailable.');
         }
+
+        // Initialize optional API clients
+        const apiKeys = loadApiKeys();
         
-        console.log('Successfully initialized available API clients');
+        if (apiKeys.gemini) {
+            try {
+                genAI = new GoogleGenerativeAI(apiKeys.gemini);
+                console.log('Successfully initialized Gemini API client');
+            } catch (error) {
+                console.error('Error initializing Gemini API client:', error);
+            }
+        }
+
+        if (apiKeys.openai) {
+            try {
+                openai = new OpenAI({ apiKey: apiKeys.openai });
+                console.log('Successfully initialized OpenAI API client');
+            } catch (error) {
+                console.error('Error initializing OpenAI API client:', error);
+            }
+        }
+
     } catch (error) {
-        console.error('Error initializing clients:', error);
+        console.error('Error in client initialization:', error);
+        // Don't throw error, allow server to start without services
     }
 };
 
@@ -176,8 +257,36 @@ ${text}`
     }
 }
 
-// Add JSON parsing middleware
+// Add middleware
 app.use(express.json());
+
+// Handle CORS preflight requests
+app.use((req, res, next) => {
+    const origin = process.env.NODE_ENV === 'production'
+        ? req.headers.origin // Use the actual origin in production
+        : 'http://localhost:3000';
+
+    // Set CORS headers
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Access-Control-Allow-Credentials', 'true');
+
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+    } else {
+        next();
+    }
+});
+
+// Add security headers
+app.use((req, res, next) => {
+    res.header('X-Content-Type-Options', 'nosniff');
+    res.header('X-Frame-Options', 'SAMEORIGIN');
+    res.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    next();
+});
 
 // API key verification endpoint
 app.post('/verify-api-key', async (req, res) => {
@@ -310,71 +419,83 @@ io.on('connection', (socket) => {
 
     // Function to create a new recognize stream
     const createRecognizeStream = () => {
-        // Check if GCP credentials exist
-        if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-            throw new Error('Google Cloud credentials not found. Please verify your GCP key in settings.');
-        }
-        
-        console.log('Starting new recognize stream...');
-        
-        const request = {
-            config: {
-                encoding: 'LINEAR16',
-                sampleRateHertz: 16000,
-                languageCode: socket.sourceLanguage || 'en-US',
-                enableAutomaticPunctuation: true,
-                model: 'default',
-                useEnhanced: true,
-                metadata: {
-                    interactionType: 'DICTATION',
-                    microphoneDistance: 'NEARFIELD',
-                    recordingDeviceType: 'PC_MIC',
-                }
-            },
-            interimResults: true
-        };
-
-        recognizeStream = client
-            .streamingRecognize(request)
-            .on('error', (error) => {
-                console.error('Error in recognize stream:', error);
-                socket.emit('error', 'Speech recognition error occurred: ' + error.message);
-                
-                // Only restart if it's the timeout error and streaming is still meant to be active
-                if (error.code === 11 && isStreamActive) {
-                    console.log('Stream timed out, restarting...');
-                    createRecognizeStream();
-                } else {
-                    isStreamActive = false;
-                }
-            })
-            .on('data', async (data) => {
-                if (data.results[0] && data.results[0].alternatives[0]) {
-                    const transcript = data.results[0].alternatives[0].transcript;
-                    const isFinal = data.results[0].isFinal;
-                    
-                    socket.emit('transcription', {
-                        text: transcript,
-                        isFinal: isFinal
-                    });
-                }
-            })
-            .on('end', () => {
-                console.log('Recognize stream ended');
-            });
-
-        // Set up automatic stream restart before timeout
-        clearTimeout(streamRestartTimeout);
-        streamRestartTimeout = setTimeout(() => {
-            if (isStreamActive) {
-                console.log('Preemptively restarting stream before timeout...');
-                const oldStream = recognizeStream;
-                createRecognizeStream(); // Create new stream first
-                oldStream.end(); // Then end the old stream
+        try {
+            // Verify client is initialized
+            if (!client) {
+                throw new Error('Speech-to-Text client not initialized. Please verify your GCP credentials in settings.');
             }
-        }, STREAM_TIMEOUT);
+            
+            console.log('Starting new recognize stream...');
+            
+            const request = {
+                config: {
+                    encoding: 'LINEAR16',
+                    sampleRateHertz: 16000,
+                    languageCode: socket.sourceLanguage || 'en-US',
+                    enableAutomaticPunctuation: true,
+                    model: 'default',
+                    useEnhanced: true,
+                    metadata: {
+                        interactionType: 'DICTATION',
+                        microphoneDistance: 'NEARFIELD',
+                        recordingDeviceType: 'PC_MIC',
+                    }
+                },
+                interimResults: true
+            };
 
-        return recognizeStream;
+            // Create and verify stream
+            const stream = client.streamingRecognize(request);
+            if (!stream) {
+                throw new Error('Failed to create recognition stream');
+            }
+
+            recognizeStream = stream
+                .on('error', (error) => {
+                    console.error('Error in recognize stream:', error);
+                    socket.emit('error', 'Speech recognition error occurred: ' + error.message);
+                    
+                    // Only restart if it's the timeout error and streaming is still meant to be active
+                    if (error.code === 11 && isStreamActive) {
+                        console.log('Stream timed out, restarting...');
+                        createRecognizeStream();
+                    } else {
+                        isStreamActive = false;
+                    }
+                })
+                .on('data', async (data) => {
+                    if (data.results[0] && data.results[0].alternatives[0]) {
+                        const transcript = data.results[0].alternatives[0].transcript;
+                        const isFinal = data.results[0].isFinal;
+                        
+                        socket.emit('transcription', {
+                            text: transcript,
+                            isFinal: isFinal
+                        });
+                    }
+                })
+                .on('end', () => {
+                    console.log('Recognize stream ended');
+                });
+
+            // Set up automatic stream restart before timeout
+            clearTimeout(streamRestartTimeout);
+            streamRestartTimeout = setTimeout(() => {
+                if (isStreamActive) {
+                    console.log('Preemptively restarting stream before timeout...');
+                    const oldStream = recognizeStream;
+                    createRecognizeStream(); // Create new stream first
+                    oldStream.end(); // Then end the old stream
+                }
+            }, STREAM_TIMEOUT);
+
+            return recognizeStream;
+        } catch (error) {
+            console.error('Error creating recognize stream:', error);
+            socket.emit('error', 'Failed to create recognition stream: ' + error.message);
+            isStreamActive = false;
+            throw error;
+        }
     };
 
     // Function to stop recording
@@ -459,19 +580,40 @@ io.on('connection', (socket) => {
 
     socket.on('startGoogleCloudStream', async () => {
         try {
-            isStreamActive = true;
-            createRecognizeStream();
-            console.log('Successfully created recognize stream');
+            // Check if Speech-to-Text client is available
+            if (!client) {
+                socket.emit('error', 'Speech recognition is not available. Please set up your Google Cloud credentials in settings.');
+                return;
+            }
 
-            // Set up total duration limit
-            clearTimeout(totalDurationTimeout);
-            totalDurationTimeout = setTimeout(() => {
-                stopRecording('Recording limit of 2 hours reached');
-            }, TOTAL_DURATION_LIMIT);
+            // Check if stream is already active
+            if (isStreamActive) {
+                socket.emit('error', 'Speech recognition is already running.');
+                return;
+            }
+
+            isStreamActive = true;
+            
+            try {
+                createRecognizeStream();
+                console.log('Successfully created recognize stream');
+
+                // Set up total duration limit
+                clearTimeout(totalDurationTimeout);
+                totalDurationTimeout = setTimeout(() => {
+                    stopRecording('Recording limit of 2 hours reached');
+                }, TOTAL_DURATION_LIMIT);
+
+            } catch (error) {
+                console.error('Error creating recognize stream:', error);
+                socket.emit('error', 'Failed to start speech recognition. Please verify your Google Cloud credentials in settings.');
+                isStreamActive = false;
+                stopRecording('Failed to create stream');
+            }
 
         } catch (error) {
-            console.error('Error creating recognize stream:', error);
-            socket.emit('error', 'Failed to start speech recognition: ' + error.message);
+            console.error('Error in startGoogleCloudStream:', error);
+            socket.emit('error', 'An unexpected error occurred. Please try again.');
             isStreamActive = false;
         }
     });

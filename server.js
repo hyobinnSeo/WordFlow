@@ -17,16 +17,12 @@ const OpenAI = require('openai');
 // Serve static files from public directory
 app.use(express.static('public'));
 
-// Load API keys from json file
+// Load API keys from environment variables
 const loadApiKeys = () => {
-    try {
-        const keysPath = path.join(__dirname, 'keys', 'api-keys.json');
-        const keys = JSON.parse(fs.readFileSync(keysPath, 'utf8'));
-        return keys;
-    } catch (error) {
-        console.error('Error loading API keys:', error);
-        return { openai: null, gemini: null };
-    }
+    return {
+        openai: process.env.OPENAI_API_KEY || null,
+        gemini: process.env.GEMINI_API_KEY || null
+    };
 };
 
 // Initialize API clients
@@ -51,11 +47,13 @@ const initializeClients = () => {
         }
         
         // Initialize Google Cloud clients if credentials exist
-        const gcpCredentialsPath = path.join(__dirname, 'keys', 'gcp.json');
-        if (fs.existsSync(gcpCredentialsPath)) {
-            process.env.GOOGLE_APPLICATION_CREDENTIALS = gcpCredentialsPath;
-            client = new speech.SpeechClient();
-            translate = new Translate();
+        if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+            client = new speech.SpeechClient({
+                credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS)
+            });
+            translate = new Translate({
+                credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS)
+            });
         }
         
         console.log('Successfully initialized available API clients');
@@ -192,17 +190,8 @@ app.post('/verify-api-key', async (req, res) => {
                 const model = tempGenAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-preview-02-05" });
                 await model.generateContent("Test"); // Verify key works
                 
-                // Ensure keys directory exists
-                const keysDir = path.join(__dirname, 'keys');
-                if (!fs.existsSync(keysDir)) {
-                    fs.mkdirSync(keysDir, { recursive: true });
-                }
-
-                // Save verified key to api-keys.json
-                const apiKeys = loadApiKeys();
-                apiKeys.gemini = key;
-                const keysPath = path.join(keysDir, 'api-keys.json');
-                fs.writeFileSync(keysPath, JSON.stringify(apiKeys, null, 2));
+                // Set environment variable
+                process.env.GEMINI_API_KEY = key;
                 
                 // Reinitialize clients
                 initializeClients();
@@ -220,17 +209,8 @@ app.post('/verify-api-key', async (req, res) => {
                     messages: [{ role: "user", content: "Test" }]
                 });
                 
-                // Ensure keys directory exists
-                const openaiKeysDir = path.join(__dirname, 'keys');
-                if (!fs.existsSync(openaiKeysDir)) {
-                    fs.mkdirSync(openaiKeysDir, { recursive: true });
-                }
-
-                // Save verified key to api-keys.json
-                const openaiKeys = loadApiKeys();
-                openaiKeys.openai = key;
-                const openaiKeysPath = path.join(openaiKeysDir, 'api-keys.json');
-                fs.writeFileSync(openaiKeysPath, JSON.stringify(openaiKeys, null, 2));
+                // Set environment variable
+                process.env.OPENAI_API_KEY = key;
                 
                 // Reinitialize clients
                 initializeClients();
@@ -287,15 +267,8 @@ app.post('/verify-api-key', async (req, res) => {
                 });
                 await tempTranslate.translate("Test", 'ko');
                 
-                // Ensure keys directory exists
-                const gcpKeysDir = path.join(__dirname, 'keys');
-                if (!fs.existsSync(gcpKeysDir)) {
-                    fs.mkdirSync(gcpKeysDir, { recursive: true });
-                }
-
-                // If verification successful, save formatted credentials to gcp.json
-                const voiceflowPath = path.join(gcpKeysDir, 'gcp.json');
-                fs.writeFileSync(voiceflowPath, JSON.stringify(formattedCredentials, null, 2));
+                // Set environment variable with stringified credentials
+                process.env.GOOGLE_APPLICATION_CREDENTIALS = JSON.stringify(formattedCredentials);
                 
                 // Reinitialize clients with new credentials
                 initializeClients();
@@ -338,11 +311,9 @@ io.on('connection', (socket) => {
     // Function to create a new recognize stream
     const createRecognizeStream = () => {
         // Check if GCP credentials exist
-        const gcpCredentialsPath = path.join(__dirname, 'keys', 'gcp.json');
-        if (!fs.existsSync(gcpCredentialsPath)) {
+        if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
             throw new Error('Google Cloud credentials not found. Please verify your GCP key in settings.');
         }
-        process.env.GOOGLE_APPLICATION_CREDENTIALS = gcpCredentialsPath;
         
         console.log('Starting new recognize stream...');
         

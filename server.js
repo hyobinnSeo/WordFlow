@@ -51,7 +51,7 @@ const initializeClients = () => {
         }
         
         // Initialize Google Cloud clients if credentials exist
-        const gcpCredentialsPath = path.join(__dirname, 'keys', 'voiceflow.json');
+        const gcpCredentialsPath = path.join(__dirname, 'keys', 'gcp.json');
         if (fs.existsSync(gcpCredentialsPath)) {
             process.env.GOOGLE_APPLICATION_CREDENTIALS = gcpCredentialsPath;
             client = new speech.SpeechClient();
@@ -293,8 +293,8 @@ app.post('/verify-api-key', async (req, res) => {
                     fs.mkdirSync(gcpKeysDir, { recursive: true });
                 }
 
-                // If verification successful, save formatted credentials to voiceflow.json
-                const voiceflowPath = path.join(gcpKeysDir, 'voiceflow.json');
+                // If verification successful, save formatted credentials to gcp.json
+                const voiceflowPath = path.join(gcpKeysDir, 'gcp.json');
                 fs.writeFileSync(voiceflowPath, JSON.stringify(formattedCredentials, null, 2));
                 
                 // Reinitialize clients with new credentials
@@ -338,7 +338,7 @@ io.on('connection', (socket) => {
     // Function to create a new recognize stream
     const createRecognizeStream = () => {
         // Check if GCP credentials exist
-        const gcpCredentialsPath = path.join(__dirname, 'keys', 'voiceflow.json');
+        const gcpCredentialsPath = path.join(__dirname, 'keys', 'gcp.json');
         if (!fs.existsSync(gcpCredentialsPath)) {
             throw new Error('Google Cloud credentials not found. Please verify your GCP key in settings.');
         }

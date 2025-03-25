@@ -419,7 +419,9 @@ function updateTranscriptionArea() {
             if (translation) {
                 // Remove surrounding double quotes if they exist
                 const cleanTranslation = translation.replace(/^"(.*)"$/, '$1');
-                displayHtml += `<div class="translation-line">→ ${cleanTranslation}</div>`;
+                // Add spans around text in square brackets
+                const formattedTranslation = cleanTranslation.replace(/\[(.*?)\]/g, '<span text-content>[$1]</span>');
+                displayHtml += `<div class="translation-line">→ ${formattedTranslation}</div>`;
             }
             if (index < sentences.length - 1) {
                 displayHtml += '<div class="spacer"></div>';

@@ -361,6 +361,11 @@ body {
   padding-left: 1rem;
 }
 
+/* Style for text in square brackets */
+.translation-line [text-content] {
+  color: #8899a6;
+}
+
 .spacer {
   height: 1rem;
 }

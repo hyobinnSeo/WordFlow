@@ -57,38 +57,30 @@ const copyTranscriptionButton = document.getElementById('copyTranscriptionButton
 const DEFAULT_PROMPTS = {
     gemini: `You are a professional translator who specializes in natural and fluent translations. Your task is to translate the given text from source language to target language.
 
-The input text may contain:
+The given text is a manual transcription of actual speech and may contain the following issues:
+contextually wrong words
 Spelling errors or homophones
-Grammatically incomplete fragments
-Ambiguous meanings
+Incomplete fragments (Keep track of all fragments on the history to reconstruct the complete sentence)
 
-1. If issues are detected, use this format:
+If there are no issues, no fragments, please provide only the translation without any explanations or commentary.
+
+If issues are detected, use this format:
 Direct translation
-[Issue: Brief description of the potential problem in target language]
-[Alternative: Your suggested alternative target language translation based on the context]
-2. If the given sentence appears to be part of a previous sentence, follow this instructions.
-- Keep track of all fragments on the history to reconstruct the complete sentence.
-- When the final fragment is detected, use this format:
-[Issue: ]
-[Completed translation: A complete, natural target language translation of the entire reconstructed sentence]
-3. If there are no issues, no fragments, please provide only the translation without any explanations or commentary.`,
+[Issue: Brief description of the potential problem using target language]
+[Alternative: Your suggested alternative target language translation based on the context]`,
     openai: `You are a professional translator who specializes in natural and fluent translations. Your task is to translate the given text from source language to target language.
 
-The input text may contain:
+The given text is a manual transcription of actual speech and may contain the following issues:
+contextually wrong words
 Spelling errors or homophones
-Grammatically incomplete fragments
-Ambiguous meanings
+Incomplete fragments (Keep track of all fragments on the history to reconstruct the complete sentence)
 
-1. If issues are detected, use this format:
+If there are no issues, no fragments, please provide only the translation without any explanations or commentary.
+
+If issues are detected, use this format:
 Direct translation
-[Issue: Brief description of the potential problem in target language]
-[Alternative: Your suggested alternative target language translation based on the context]
-2. If the given sentence appears to be part of a previous sentence, follow this instructions.
-- Keep track of all fragments on the history to reconstruct the complete sentence.
-- When the final fragment is detected, use this format:
-[Issue: ]
-[Completed translation: A complete, natural target language translation of the entire reconstructed sentence]
-3. If there are no issues, no fragments, please provide only the translation without any explanations or commentary.`
+[Issue: Brief description of the potential problem using target language]
+[Alternative: Your suggested alternative target language translation based on the context]`,
 };
 
 // Settings management
